@@ -23,7 +23,7 @@ except ImportError:
 # Importar las funciones de los scripts existentes desde backend/
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
-from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto
+from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
 
 # Configurar logging
@@ -145,9 +145,11 @@ def process_audio():
     
     Retorna:
         - transcription: texto transcrito completo
-        - summary: resumen generado
-        - statistics: estadísticas del audio
-        - speakers: información de hablantes
+        - summary: resumen básico con estadísticas
+        - statistics: estadísticas del audio (palabras, oraciones, duración)
+        - speakers: información de hablantes (intervenciones, palabras)
+        - speechmatics_summary: resumen generado por Speechmatics (si disponible)
+        - ai_summary: resumen generado por Gemini AI (si API key configurada)
     """
     try:
         data = request.get_json()
@@ -181,10 +183,13 @@ def process_audio():
         # Procesar transcripción para obtener texto limpio
         texto_transcrito = procesar_transcripcion_para_texto(resultado_transcripcion)
         
-        # Generar resumen básico
+        # Extraer resumen de Speechmatics (si está disponible)
+        resumen_speechmatics = extraer_resumen_speechmatics(resultado_transcripcion)
+        
+        # Generar resumen básico con estadísticas
         resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
         
-        # Generar resumen con IA
+        # Generar resumen con IA (Gemini)
         resumen_ia = None
         gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
         
@@ -198,10 +203,16 @@ def process_audio():
             'success': True,
             'transcription': texto_transcrito,
             'summary': resumen['resumen_basico'],
-            'speakers': resumen.get('hablantes', {})
+            'speakers': resumen.get('hablantes', {}),
+            'statistics': resumen.get('resumen_basico', {}).get('estadisticas', {})
         }
         
-        # Agregar resumen de IA
+        # Agregar resumen de Speechmatics si está disponible
+        if resumen_speechmatics:
+            response_data['speechmatics_summary'] = resumen_speechmatics
+            logger.info("Resumen de Speechmatics incluido en la respuesta")
+        
+        # Agregar resumen de IA (Gemini) si está disponible
         if resumen_ia:
             response_data['ai_summary'] = resumen_ia
         
