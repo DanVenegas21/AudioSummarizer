@@ -3,7 +3,8 @@ Flask==3.0.0
 flask-cors==4.0.0
 Werkzeug==3.0.1
 
-# Cliente HTTP para Speechmatics API
+# Cliente oficial de Speechmatics API
+speechmatics-python>=1.9.0
 httpx==0.25.2
 
 # Logging y utilidades
