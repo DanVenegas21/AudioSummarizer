@@ -11,7 +11,6 @@ import json
 
 logger = logging.getLogger(__name__)
 
-
 def transcribir_audio_service(archivo_audio, api_key, idioma='es', enable_summarization=True):
     """
     Transcribe un archivo de audio usando Speechmatics API (modo batch)
@@ -156,3 +155,4 @@ def procesar_transcripcion_para_texto(resultado):
                 texto_completo += " "
     
     return texto_completo.strip()
+
