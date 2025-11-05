@@ -1,0 +1,673 @@
+/* AUDIO SUMMARIZER - MAIN SCRIPT */
+// Estado global de la aplicación
+const AppState = {
+    currentAudioFile: null,
+    audioURL: null,
+    isProcessing: false,
+    lastResult: null,
+};
+
+// Elementos del DOM
+const DOM = {
+    // Upload Section
+    uploadBox: document.getElementById('uploadBox'),
+    fileInput: document.getElementById('fileInput'),
+    selectFileBtn: document.getElementById('selectFileBtn'),
+    documentsQueue: document.getElementById('documentsQueue'),
+    queueList: document.getElementById('queueList'),
+    queueCount: document.getElementById('queueCount'),
+    processAllBtn: document.getElementById('processAllBtn'),
+    
+    // Preview Section
+    previewSection: document.getElementById('previewSection'),
+    documentsViewer: document.getElementById('documentsViewer'),
+    documentsTabs: document.getElementById('documentsTabs'),
+    tabsHeader: document.getElementById('tabsHeader'),
+    
+    // Modals
+    errorModal: document.getElementById('errorModal'),
+    errorMessage: document.getElementById('errorMessage'),
+    closeModalBtn: document.getElementById('closeModalBtn'),
+    closeErrorBtn: document.getElementById('closeErrorBtn'),
+    
+    // Chat Footer Estático
+    chatFooterStatic: document.getElementById('chatFooterStatic'),
+    chatInput: document.getElementById('chatInput'),
+    sendChatBtn: document.getElementById('sendChatBtn')
+};
+
+/* UTILIDADES */
+/* Formatea el tamaño del archivo en formato legible */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+/* Formatea la duración en formato mm:ss */
+function formatDuration(seconds) {
+    if (!seconds || isNaN(seconds)) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/* Valida si el archivo es de audio */
+function isValidAudioFile(file) {
+    const validTypes = [
+        'audio/mpeg',       // .mp3
+        'audio/wav',        // .wav
+        'audio/wave',       // .wav
+        'audio/x-wav',      // .wav
+        'audio/mp4',        // .m4a
+        'audio/x-m4a',      // .m4a
+        'audio/ogg',        // .ogg
+        'audio/flac',       // .flac
+        'audio/x-flac',     // .flac
+        'audio/aac',        // .aac
+        'audio/x-ms-wma'    // .wma
+    ];
+    
+    const validExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma'];
+    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    
+    return validTypes.includes(file.type) || validExtensions.includes(fileExtension);
+}
+
+/* Muestra un mensaje de error */
+function showError(message) {
+    DOM.errorMessage.textContent = message;
+    DOM.errorModal.classList.remove('hidden');
+}
+
+/* Cierra el modal de error */
+function closeErrorModal() {
+    DOM.errorModal.classList.add('hidden');
+}
+
+/* Obtiene la duración del archivo de audio */
+function getAudioDuration(file) {
+    return new Promise((resolve) => {
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        
+        audio.onloadedmetadata = () => {
+            URL.revokeObjectURL(audio.src);
+            resolve(audio.duration);
+        };
+        
+        audio.onerror = () => {
+            resolve(null);
+        };
+        
+        audio.src = URL.createObjectURL(file);
+    });
+}
+
+/* MANEJO DE ARCHIVOS DE AUDIO */
+/* Procesa el archivo de audio seleccionado */
+async function handleAudioFile(file) {
+    // Validar tipo de archivo
+    if (!isValidAudioFile(file)) {
+        showError('Invalid file type. Please select an audio file (MP3, WAV, M4A, OGG, FLAC, AAC, WMA).');
+        return;
+    }
+    
+    // Validar tamaño (máximo 100MB)
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+        showError('File is too large. Maximum size is 100MB.');
+        return;
+    }
+    
+    // Si ya hay un archivo cargado, limpiar
+    if (AppState.currentAudioFile) {
+        clearCurrentAudio();
+    }
+    
+    // Guardar el archivo en el estado
+    AppState.currentAudioFile = file;
+    AppState.audioURL = URL.createObjectURL(file);
+    
+    // Obtener duración del audio
+    const duration = await getAudioDuration(file);
+    
+    // Mostrar el archivo en la cola
+    displayAudioInQueue(file, duration);
+    
+    // Mostrar la sección de cola
+    DOM.documentsQueue.classList.remove('hidden');
+}
+
+/* Muestra el archivo de audio en la cola */
+function displayAudioInQueue(file, duration) {
+    // Limpiar la lista
+    DOM.queueList.innerHTML = '';
+    
+    // Crear elemento de audio
+    const audioItem = document.createElement('div');
+    audioItem.className = 'queue-item';
+    audioItem.innerHTML = `
+        <div class="queue-item-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+        </div>
+        <div class="queue-item-info">
+            <h4 class="queue-item-name">${file.name}</h4>
+            <div class="queue-item-meta">
+                <span class="queue-item-size">${formatFileSize(file.size)}</span>
+                <span class="queue-item-separator">•</span>
+                <span class="queue-item-duration">${formatDuration(duration)}</span>
+            </div>
+            <div class="audio-player-container">
+                <audio controls class="audio-player">
+                    <source src="${AppState.audioURL}" type="${file.type}">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        </div>
+        <button class="btn-close btn-remove-item" title="Remove file">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    `;
+    
+    // Agregar evento para eliminar
+    const removeBtn = audioItem.querySelector('.btn-close');
+    removeBtn.addEventListener('click', () => clearCurrentAudio());
+    
+    DOM.queueList.appendChild(audioItem);
+    
+    // Actualizar contador
+    DOM.queueCount.textContent = '1 file';
+}
+
+/* Limpia el audio actual */
+function clearCurrentAudio() {
+    // Revocar URL del objeto
+    if (AppState.audioURL) {
+        URL.revokeObjectURL(AppState.audioURL);
+        AppState.audioURL = null;
+    }
+    
+    // Limpiar estado
+    AppState.currentAudioFile = null;
+    
+    // Limpiar UI
+    DOM.queueList.innerHTML = '';
+    DOM.documentsQueue.classList.add('hidden');
+    DOM.queueCount.textContent = '0 files';
+    
+    // Reset input
+    DOM.fileInput.value = '';
+}
+
+/* Procesa el audio (envía al backend) */
+async function processAudio() {
+    if (!AppState.currentAudioFile) {
+        showError('No audio file selected.');
+        return;
+    }
+    
+    if (AppState.isProcessing) {
+        return;
+    }
+    
+    AppState.isProcessing = true;
+    DOM.processAllBtn.disabled = true;
+    DOM.processAllBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+        Processing...
+    `;
+    
+    try {
+        // PASO 1: Subir el archivo
+        const formData = new FormData();
+        formData.append('audio', AppState.currentAudioFile);
+        
+        const uploadResponse = await fetch('http://localhost:5000/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            const error = await uploadResponse.json();
+            throw new Error(error.error || 'Failed to upload file');
+        }
+        
+        const uploadData = await uploadResponse.json();
+        const fileId = uploadData.file_id;
+        
+        console.log('File uploaded successfully:', fileId);
+        
+        const processData = {
+            file_id: fileId,
+            language: 'es'  // Puedes hacer esto configurable
+        };
+        
+        DOM.processAllBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+            Transcribing... (this may take a few minutes)
+        `;
+        
+        const processResponse = await fetch('http://localhost:5000/api/process', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(processData)
+        });
+        
+        if (!processResponse.ok) {
+            const error = await processResponse.json();
+            throw new Error(error.error || 'Failed to process audio');
+        }
+        
+        const result = await processResponse.json();
+        
+        console.log('Processing completed:', result);
+        
+        // PASO 3: Mostrar el resultado
+        displaySummary(result);
+        
+        // Mostrar la sección de preview
+        DOM.previewSection.classList.remove('hidden');
+        
+        // Mostrar el chat footer estático
+        DOM.chatFooterStatic.classList.remove('hidden');
+        
+        // Scroll hacia los resultados
+        DOM.previewSection.scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('Error processing audio:', error);
+        showError('Error: ' + error.message);
+    } finally {
+        AppState.isProcessing = false;
+        DOM.processAllBtn.disabled = false;
+        DOM.processAllBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Process Audio File
+        `;
+    }
+}
+
+/* EVENT LISTENERS */
+
+/* Inicializa todos los event listeners */
+function initializeEventListeners() {
+    // Click en el botón de seleccionar archivo
+    DOM.selectFileBtn.addEventListener('click', () => {
+        DOM.fileInput.click();
+    });
+    
+    // Cambio en el input de archivo
+    DOM.fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleAudioFile(file);
+        }
+    });
+    
+    // Drag and Drop en el upload box
+    DOM.uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        DOM.uploadBox.classList.add('drag-over');
+    });
+    
+    DOM.uploadBox.addEventListener('dragleave', () => {
+        DOM.uploadBox.classList.remove('drag-over');
+    });
+    
+    DOM.uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        DOM.uploadBox.classList.remove('drag-over');
+        
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleAudioFile(file);
+        }
+    });
+    
+    // Botón de procesar
+    DOM.processAllBtn.addEventListener('click', processAudio);
+    
+    // Modales de error
+    DOM.closeModalBtn.addEventListener('click', closeErrorModal);
+    DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
+    
+    // Click fuera del modal para cerrar
+    DOM.errorModal.addEventListener('click', (e) => {
+        if (e.target === DOM.errorModal) {
+            closeErrorModal();
+        }
+    });
+    
+    // Chat Footer Estático
+    DOM.sendChatBtn.addEventListener('click', handleChatMessage);
+    
+    DOM.chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleChatMessage();
+        }
+    });
+}
+
+/* Muestra el resumen en la UI */
+function displaySummary(result) {
+    // Limpiar contenedor previo
+    DOM.documentsViewer.innerHTML = '';
+    DOM.tabsHeader.innerHTML = '';
+    
+    // Guardar el resultado en el estado global (incluye transcripción para el chat)
+    AppState.lastResult = result;
+    
+    // Crear panel de resumen
+    const panel = document.createElement('div');
+    panel.className = 'document-panel active';
+    
+    // Construir HTML del resumen
+    const summary = result.summary;
+    const speakers = result.speakers || {};
+    const statistics = result.statistics || {};
+    const aiSummary = result.ai_summary || null;
+    
+    let speakersHTML = '';
+    if (Object.keys(speakers).length > 0) {
+        speakersHTML = `
+            <div class="summary-section">
+                <h3>Speakers</h3>
+                <div class="speakers-grid">
+                    ${Object.entries(speakers).map(([id, info]) => `
+                        <div class="speaker-card">
+                            <div class="speaker-header">
+                                <span class="speaker-name">Speaker ${id}</span>
+                            </div>
+                            <div class="speaker-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Words:</span>
+                                    <span class="stat-value">${info.palabras || 0}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Interventions:</span>
+                                    <span class="stat-value">${info.intervenciones || 0}</span>
+                                </div>
+                                ${info.promedio_palabras_intervencion ? `
+                                <div class="stat-item">
+                                    <span class="stat-label">Avg per intervention:</span>
+                                    <span class="stat-value">${info.promedio_palabras_intervencion}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Resumen inteligente de IA
+    let aiSummaryHTML = '';
+    if (aiSummary) {
+        aiSummaryHTML = `
+            <div class="summary-section ai-summary-section">
+                <h3>🤖 AI-Generated Summary</h3>
+                
+                ${aiSummary.resumen_ejecutivo ? `
+                    <div class="ai-executive-summary">
+                        <h4>Executive Summary</h4>
+                        <p>${aiSummary.resumen_ejecutivo}</p>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.temas_principales && aiSummary.temas_principales.length > 0 ? `
+                    <div class="ai-topics">
+                        <h4>Main Topics</h4>
+                        <ul>
+                            ${aiSummary.temas_principales.map(tema => `<li>${tema}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.decisiones_tomadas && aiSummary.decisiones_tomadas.length > 0 ? `
+                    <div class="ai-decisions">
+                        <h4>Decisions Made</h4>
+                        <ul>
+                            ${aiSummary.decisiones_tomadas.map(decision => `<li>${decision}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.tareas_asignadas && aiSummary.tareas_asignadas.length > 0 ? `
+                    <div class="ai-tasks">
+                        <h4>Assigned Tasks</h4>
+                        <ul>
+                            ${aiSummary.tareas_asignadas.map(tarea => `<li>${tarea}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.proximos_pasos && aiSummary.proximos_pasos.length > 0 ? `
+                    <div class="ai-next-steps">
+                        <h4>Next Steps</h4>
+                        <ul>
+                            ${aiSummary.proximos_pasos.map(paso => `<li>${paso}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    panel.innerHTML = `
+        <div class="summary-container">
+            <div class="summary-header">
+                <h2>Summary</h2>
+            </div>
+            
+            ${aiSummaryHTML}
+            ${speakersHTML}
+            
+            <div class="summary-section">
+                <div class="transcription-toggle">
+                    <button class="transcription-toggle-btn" id="toggleTranscription">
+                        <svg class="toggle-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Show Full Transcription</span>
+                    </button>
+                </div>
+                <div class="transcription-text hidden" id="transcriptionContent">
+                    ${result.transcription ? result.transcription.replace(/\n/g, '<br>') : 'No transcription available'}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    DOM.documentsViewer.appendChild(panel);
+    
+    // Agregar event listener para el toggle de transcripción
+    const toggleBtn = document.getElementById('toggleTranscription');
+    const transcriptionContent = document.getElementById('transcriptionContent');
+    
+    if (toggleBtn && transcriptionContent) {
+        toggleBtn.addEventListener('click', () => {
+            transcriptionContent.classList.toggle('hidden');
+            const isHidden = transcriptionContent.classList.contains('hidden');
+            const icon = toggleBtn.querySelector('.toggle-icon');
+            const text = toggleBtn.querySelector('span');
+            
+            if (isHidden) {
+                icon.style.transform = 'rotate(0deg)';
+                text.textContent = 'Show Full Transcription';
+            } else {
+                icon.style.transform = 'rotate(180deg)';
+                text.textContent = 'Hide Full Transcription';
+            }
+        });
+    }
+}
+
+/* Maneja el envío de mensajes del chat */
+async function handleChatMessage() {
+    const message = DOM.chatInput.value.trim();
+    
+    if (!message) return;
+    
+    // Verificar que hay una transcripción cargada
+    if (!AppState.lastResult || !AppState.lastResult.transcription) {
+        showError('Please process an audio file first before using the chat.');
+        return;
+    }
+    
+    // Deshabilitar input y botón mientras se procesa
+    DOM.chatInput.disabled = true;
+    DOM.sendChatBtn.disabled = true;
+    const originalBtnText = DOM.sendChatBtn.innerHTML;
+    DOM.sendChatBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"></circle>
+        </svg>
+        Thinking...
+    `;
+    
+    // Crear elemento de mensaje del usuario
+    const userMessage = createChatMessage(message, 'user');
+    appendChatMessage(userMessage);
+    
+    // Limpiar input
+    DOM.chatInput.value = '';
+    
+    try {
+        // Enviar mensaje al backend
+        const response = await fetch('http://localhost:5000/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                context: AppState.lastResult.transcription
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Error al procesar mensaje');
+        }
+        
+        // Mostrar respuesta de la IA
+        const aiMessage = createChatMessage(data.response, 'assistant');
+        appendChatMessage(aiMessage);
+        
+    } catch (error) {
+        console.error('Error en chat:', error);
+        const errorMessage = createChatMessage(
+            `Sorry, I encountered an error: ${error.message}. Please make sure Gemini API key is configured.`,
+            'assistant'
+        );
+        appendChatMessage(errorMessage);
+    } finally {
+        // Rehabilitar input y botón
+        DOM.chatInput.disabled = false;
+        DOM.sendChatBtn.disabled = false;
+        DOM.sendChatBtn.innerHTML = originalBtnText;
+        DOM.chatInput.focus();
+    }
+}
+
+/* Crea un elemento de mensaje del chat */
+function createChatMessage(text, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message chat-message-${sender}`;
+    
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = `chat-bubble chat-bubble-${sender}`;
+    
+    // Convertir markdown básico a HTML para mensajes del asistente
+    if (sender === 'assistant') {
+        bubbleDiv.innerHTML = markdownToHtml(text);
+    } else {
+        bubbleDiv.textContent = text;
+    }
+    
+    messageDiv.appendChild(bubbleDiv);
+    return messageDiv;
+}
+
+/* Agrega un mensaje al contenedor de chat */
+function appendChatMessage(messageElement) {
+    // Si no existe un contenedor de mensajes, crearlo
+    let messagesContainer = document.querySelector('.chat-messages-container');
+    
+    if (!messagesContainer) {
+        messagesContainer = document.createElement('div');
+        messagesContainer.className = 'chat-messages-container';
+        
+        // Insertar antes del chat footer
+        DOM.chatFooterStatic.insertBefore(
+            messagesContainer,
+            DOM.chatFooterStatic.firstChild
+        );
+    }
+    
+    messagesContainer.appendChild(messageElement);
+    
+    // Scroll al último mensaje
+    messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+/* Convierte markdown básico a HTML */
+function markdownToHtml(text) {
+    return text
+        // Headers
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Line breaks
+        .replace(/\n/g, '<br>')
+        // Lists (básico)
+        .replace(/^\- (.*$)/gim, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+}
+
+/* INICIALIZACIÓN */
+/* Inicializa la aplicación */
+function initApp() {
+    console.log('Audio Summarizer initialized');
+    
+    // Inicializar event listeners
+    initializeEventListeners();
+}
+
+// Iniciar la aplicación cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
+
+// Hacer disponible globalmente para debugging y extensiones
+window.AppState = AppState;
+window.handleAudioFile = handleAudioFile;
+window.processAudio = processAudio;
+window.clearCurrentAudio = clearCurrentAudio;
