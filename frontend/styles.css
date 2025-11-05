@@ -19,7 +19,6 @@
     --text-light: #9ca3af;
     
     /* Colores de fondo */
-    --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
     --bg-tertiary: #f3f4f6;
     
@@ -127,7 +126,7 @@ body {
     text-align: center;
     font-size: 1.1rem;
     color: var(--text-secondary);
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
 }
 
 .upload-container {
@@ -140,25 +139,67 @@ body {
     margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
 }
 
-.upload-box {
-    background-color: var(--bg-primary);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--spacing-xl);
-    text-align: center;
-    transition: all 0.3s ease;
+.upload-box-wrapper {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.upload-box-wrapper .upload-box-new {
+    flex: 1;
+}
+
+.upload-box-wrapper #selectFileBtn {
+    flex-shrink: 0;
+    min-width: 150px;
+}
+
+.btn-record {
+    flex-shrink: 0;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    border-radius: 50% !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
     cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 0 !important;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+.btn-record svg {
+    width: 24px;
+    height: 24px;
+}
+
+.btn-record:hover {
+    background-color: #004080;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-record:active {
+    transform: scale(0.95);
 }
 
 .upload-box-new {
-    background-color: var(--bg-primary);
+    background-color: white;
     border: 2px dashed var(--border-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    text-align: center;
+    padding: var(--spacing-xs);
+    text-align: left;
     transition: all 0.3s ease;
     cursor: pointer;
 }
@@ -174,39 +215,20 @@ body {
     transform: scale(1.02);
 }
 
-.upload-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
 .upload-content-new {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--spacing-sm);
-}
-
-.upload-icon {
-    color: var(--bg-primary);
-}
-
-.upload-content h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.upload-content p {
-    color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 1rem !important;
+    color: var(--text-light) !important;
 }
 
 .file-info {
     font-size: 0.875rem !important;
     color: var(--text-light) !important;
-    margin-top: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
 }
 
 .upload-progress {
@@ -242,7 +264,7 @@ body {
 
 /* Cola de documentos */
 .documents-queue {
-    background-color: var(--bg-primary);
+    background-color: white;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
@@ -264,19 +286,9 @@ body {
     color: var(--text-primary);
 }
 
-.queue-count {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 100px;
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
 .queue-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
     max-height: 400px;
     overflow-y: auto;
     margin-bottom: var(--spacing-md);
@@ -286,10 +298,10 @@ body {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: var(--spacing-md);
+    padding: var(--spacing-xs);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     transition: all 0.2s ease;
 }
 
@@ -435,7 +447,7 @@ body {
 }
 
 .file-card {
-    background-color: var(--bg-primary);
+    background-color: white;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
@@ -481,7 +493,7 @@ body {
 }
 
 .document-preview {
-    background-color: var(--bg-primary);
+    background-color: white;
     border-radius: var(--radius-xl);
     padding: var(--spacing-xl);
     box-shadow: var(--shadow-lg);
@@ -791,7 +803,7 @@ body {
 }
 
 .modal-content {
-    background-color: var(--bg-primary);
+    background-color: white;
     border-radius: var(--radius-xl);
     max-width: 500px;
     width: 100%;
@@ -1302,7 +1314,7 @@ body {
 /* AUDIO PLAYER STYLES */
 /* Actualización de queue-item para audio */
 .queue-item {
-    background-color: var(--bg-primary);
+    background-color: white;
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
@@ -1594,7 +1606,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
-    background: var(--bg-primary);
+    background: white;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     color: var(--text-primary);
