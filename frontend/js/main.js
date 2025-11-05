@@ -385,6 +385,7 @@ function displaySummary(result) {
     const speakers = result.speakers || {};
     const statistics = result.statistics || {};
     const aiSummary = result.ai_summary || null;
+    const speechmaticsSummary = result.speechmatics_summary || null;
     
     let speakersHTML = '';
     if (Object.keys(speakers).length > 0) {
@@ -420,12 +421,26 @@ function displaySummary(result) {
         `;
     }
     
+    // Resumen de Speechmatics
+    let speechmaticsSummaryHTML = '';
+    if (speechmaticsSummary && speechmaticsSummary.content) {
+        const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
+        speechmaticsSummaryHTML = `
+            <div class="summary-section speechmatics-summary-section">
+                <h3>Audio Summary (Speechmatics)</h3>
+                <div class="speechmatics-summary-content">
+                    ${content}
+                </div>
+            </div>
+        `;
+    }
+    
     // Resumen inteligente de IA
     let aiSummaryHTML = '';
     if (aiSummary) {
         aiSummaryHTML = `
             <div class="summary-section ai-summary-section">
-                <h3>🤖 AI-Generated Summary</h3>
+                <h3>AI-Generated Summary (Gemini)</h3>
                 
                 ${aiSummary.resumen_ejecutivo ? `
                     <div class="ai-executive-summary">
@@ -479,6 +494,7 @@ function displaySummary(result) {
                 <h2>Summary</h2>
             </div>
             
+            ${speechmaticsSummaryHTML}
             ${aiSummaryHTML}
             ${speakersHTML}
             
