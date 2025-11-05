@@ -3,19 +3,16 @@ Servicio de transcripción de audio usando Speechmatics API
 Adaptado de ejemplo_speechmatics.py para uso como servicio
 """
 
-import httpx
-import json
-import time
-from pathlib import Path
+from speechmatics.models import ConnectionSettings
+from speechmatics.batch_client import BatchClient
+from httpx import HTTPStatusError
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
-# URL base de la API de Speechmatics
-API_URL = "https://asr.api.speechmatics.com/v2"
 
-
-def transcribir_audio_service(archivo_audio, api_key, idioma='es'):
+def transcribir_audio_service(archivo_audio, api_key, idioma='es', enable_summarization=True):
     """
     Transcribe un archivo de audio usando Speechmatics API (modo batch)
     
@@ -23,11 +20,18 @@ def transcribir_audio_service(archivo_audio, api_key, idioma='es'):
         archivo_audio (str): Ruta al archivo de audio (mp3, wav, m4a, etc.)
         api_key (str): Tu clave API de Speechmatics
         idioma (str): Código del idioma ('es', 'en', etc.)
+        enable_summarization (bool): Habilitar resumen automático de Speechmatics
     
     Returns:
-        dict: Diccionario con la transcripción y metadatos, o None si hay error
+        dict: Diccionario con la transcripción, resumen y metadatos, o None si hay error
     """
-
+    
+    # Configurar la conexión
+    settings = ConnectionSettings(
+        url="https://asr.api.speechmatics.com/v2",
+        auth_token=api_key,
+    )
+    
     # Configuración de la transcripción
     config = {
         "type": "transcription",
@@ -39,39 +43,46 @@ def transcribir_audio_service(archivo_audio, api_key, idioma='es'):
         }
     }
     
-    # Preparar archivos para enviar
+    # Agregar summarization si está habilitado
+    # Documentación: https://docs.speechmatics.com/features/summarization
+    if enable_summarization:
+        config["summarization_config"] = {
+            "content_type": "auto",  # auto, informative, conversational
+            "summary_length": "detailed",  # brief, detailed
+            "summary_type": "bullets"  # bullets, paragraphs
+        }
+    
     try:
-        with open(archivo_audio, 'rb') as audio_file:
-            files = {
-                'data_file': (Path(archivo_audio).name, audio_file, 'audio/mpeg'),
-                'config': (None, json.dumps(config), 'application/json')
-            }
-            
-            headers = {
-                'Authorization': f'Bearer {api_key}'
-            }
-            
-            # Enviar petición a la API
-            with httpx.Client(timeout=300.0) as client:  # Timeout de 5 minutos
-                response = client.post(
-                    f"{API_URL}/jobs",
-                    headers=headers,
-                    files=files
+        # Abrir el cliente usando context manager
+        with BatchClient(settings) as client:
+            try:
+                # Enviar el trabajo de transcripción
+                job_id = client.submit_job(
+                    audio=archivo_audio,
+                    transcription_config=config,
                 )
-            
-            # Verificar respuesta
-            if response.status_code == 201:
-                resultado = response.json()
-                job_id = resultado['id']
-                logger.info(f"Audio enviado correctamente. Job ID: {job_id}")
+                logger.info(f"Job {job_id} enviado exitosamente, esperando transcripción...")
                 
-                # Esperar a que se complete el procesamiento
-                return esperar_resultado(job_id, api_key)
-            else:
-                logger.error(f"Error al enviar audio: {response.status_code}")
-                logger.error(f"Detalle: {response.text}")
-                return None
+                # Esperar a que se complete y obtener el resultado en formato JSON
+                # Nota: En producción, se recomienda configurar notificaciones en lugar de polling
+                # Documentación: https://docs.speechmatics.com/speech-to-text/batch/notifications
+                transcript = client.wait_for_completion(job_id, transcription_format="json-v2")
                 
+                logger.info(f"Transcripción completada exitosamente para job {job_id}")
+                return transcript
+                
+            except HTTPStatusError as e:
+                if e.response.status_code == 401:
+                    logger.error("API key inválida - Verifica tu SPEECHMATICS_API_KEY")
+                    return None
+                elif e.response.status_code == 400:
+                    error_detail = e.response.json().get("detail", "Error desconocido")
+                    logger.error(f"Error en la solicitud: {error_detail}")
+                    return None
+                else:
+                    logger.error(f"Error HTTP {e.response.status_code}: {str(e)}")
+                    raise e
+                    
     except FileNotFoundError:
         logger.error(f"No se encontró el archivo '{archivo_audio}'")
         return None
@@ -80,66 +91,30 @@ def transcribir_audio_service(archivo_audio, api_key, idioma='es'):
         return None
 
 
-def esperar_resultado(job_id, api_key):
+def extraer_resumen_speechmatics(resultado):
     """
-    Espera a que la transcripción se complete y obtiene el resultado
+    Extrae el resumen generado por Speechmatics (si está disponible)
     
     Args:
-        job_id (str): ID del trabajo de transcripción
-        api_key (str): Tu clave API
+        resultado (dict): Resultado JSON de Speechmatics
     
     Returns:
-        dict: Transcripción completa, o None si hay error
+        dict: Resumen de Speechmatics o None si no está disponible
     """
-    
-    headers = {
-        'Authorization': f'Bearer {api_key}'
-    }
-    
-
-    
-    with httpx.Client() as client:
-        max_attempts = 120  # Máximo 10 minutos (120 * 5 segundos)
-        attempt = 0
-        
-        while attempt < max_attempts:
-            # Consultar estado del trabajo
-            response = client.get(
-                f"{API_URL}/jobs/{job_id}",
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                job_info = response.json()
-                status = job_info['job']['status']
-                
-                if status == 'done':
-                    
-                    # Obtener la transcripción
-                    transcript_response = client.get(
-                        f"{API_URL}/jobs/{job_id}/transcript",
-                        headers=headers
-                    )
-                    
-                    if transcript_response.status_code == 200:
-                        return transcript_response.json()
-                    else:
-                        logger.error(f"Error al obtener transcripción: {transcript_response.status_code}")
-                        return None
-                
-                elif status == 'rejected':
-                    logger.error("La transcripción fue rechazada")
-                    return None
-                
-                else:
-                    time.sleep(5)  # Esperar 5 segundos antes de volver a consultar
-                    attempt += 1
-            else:
-                logger.error(f"Error al consultar estado: {response.status_code}")
-                return None
-        
-        logger.error("Timeout: la transcripción tomó demasiado tiempo")
+    if not resultado:
         return None
+    
+    # El resumen de Speechmatics viene en la sección 'summary'
+    summary = resultado.get('summary', {})
+    
+    if not summary:
+        return None
+    
+    return {
+        'content': summary.get('content', ''),
+        'summary_type': summary.get('summary_type', 'bullets'),
+        'summary_length': summary.get('summary_length', 'detailed')
+    }
 
 
 def procesar_transcripcion_para_texto(resultado):
