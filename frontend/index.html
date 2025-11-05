@@ -28,29 +28,31 @@
         <div class="container">
             <h2 class="section-title">Upload Your Audio Files</h2>
             <p class="section-subtitle">"Transform your audio recordings into comprehensive summaries"</p>
-            
             <div class="upload-container-new">
-                <!-- Upload Box - Siempre visible -->
-                <div class="upload-box-new" id="uploadBox">
-                    <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma" hidden>
-                    
-                    <div class="upload-content-new">
-                        
-                        <h3>Drag and drop an audio file here</h3>
-                        <p>or</p>
-                        <button class="btn btn-primary" id="selectFileBtn"><svg class="upload-icon" width="30" height="30" viewBox="0 0 80 80" fill="none">
-                            <path d="M40 10V50M40 10L25 25M40 10L55 25" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M70 50V65C70 67.7614 68.9464 70.4096 67.0711 72.2839C65.1957 74.1584 62.5478 75.2119 59.7864 75.2119H20.2136C17.4522 75.2119 14.8043 74.1584 12.9289 72.2839C11.0536 70.4096 10 67.7614 10 65V50" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg></button>
-                        <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC (Max. 100MB)</p>
+                <!-- Upload Box con botón a la derecha -->
+                <div class="upload-box-wrapper">
+                    <button class="btn btn-record" id="recordBtn" title="Record Audio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
+                    <div class="upload-box-new" id="uploadBox">
+                        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma" hidden>
+                        <div class="upload-content-new">
+                            <p>Drag and drop an audio file here</p>
+                        </div>
                     </div>
+                    <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
                 </div>
+                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC (Max. 100MB)</p>
 
                 <!-- Audio cargado -->
                 <div class="documents-queue hidden" id="documentsQueue">
                     <div class="queue-header">
                         <h3>Audio File Ready to Process</h3>
-                        <span class="queue-count" id="queueCount">0 files</span>
                     </div>
                     <div class="queue-list" id="queueList">
                         <!-- El audio se agregará dinámicamente aquí -->
@@ -59,7 +61,7 @@
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
-                        Process Audio File
+                        Generate Summary
                     </button>
                 </div>
             </div>
@@ -70,7 +72,6 @@
     <section class="preview-section hidden" id="previewSection">
         <div class="container-wide">
             <h2 class="section-title">Generated Summaries</h2>
-            
             <!-- Tabs de navegación entre resúmenes -->
             <div class="documents-tabs hidden" id="documentsTabs">
                 <div class="tabs-header" id="tabsHeader">
