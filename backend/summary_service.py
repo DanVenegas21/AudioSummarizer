@@ -4,72 +4,24 @@ Adaptado de generar_resumen.py para uso como servicio
 """
 
 from datetime import datetime
-from collections import Counter
 import logging
 import os
 
 logger = logging.getLogger(__name__)
 
-
 def generar_resumen_basico(texto):
     """
-    Genera un resumen básico con estadísticas del texto transcrito
+    Genera un resumen básico del texto transcrito
     
     Args:
         texto (str): Texto de la transcripción
     
     Returns:
-        dict: Resumen con estadísticas y palabras clave
+        dict: Resumen básico con fecha
     """
-    if not texto:
-        return {
-            'fecha': datetime.now().strftime('%Y-%m-%d %H:%M'),
-            'estadisticas': {
-                'total_palabras': 0,
-                'total_oraciones': 0,
-                'palabras_promedio_oracion': 0
-            },
-            'palabras_clave': [],
-            'temas_principales': []
-        }
-    
-    palabras = texto.split()
-    oraciones = texto.split('.')
-    
-    # Palabras más comunes (excluir palabras vacías básicas)
-    palabras_vacias = {
-        'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 
-        'se', 'no', 'haber', 'por', 'con', 'su', 'para', 'como',
-        'estar', 'tener', 'le', 'lo', 'todo', 'pero', 'más', 'hacer',
-        'del', 'al', 'los', 'las', 'una', 'unos', 'unas', 'este',
-        'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas',
-        'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-        'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were'
+    return {
+        'fecha': datetime.now().strftime('%Y-%m-%d %H:%M')
     }
-    
-    palabras_filtradas = [
-        p.lower().strip('.,!?;:()[]{}""\'') 
-        for p in palabras 
-        if p.lower().strip('.,!?;:()[]{}""\'') not in palabras_vacias and len(p) > 3
-    ]
-    
-    palabras_frecuentes = Counter(palabras_filtradas).most_common(15)
-    
-    resumen = {
-        'fecha': datetime.now().strftime('%Y-%m-%d %H:%M'),
-        'estadisticas': {
-            'total_palabras': len(palabras),
-            'total_oraciones': len([o for o in oraciones if o.strip()]),
-            'palabras_promedio_oracion': round(len(palabras) / max(len([o for o in oraciones if o.strip()]), 1), 1)
-        },
-        'palabras_clave': [palabra for palabra, _ in palabras_frecuentes[:10]],
-        'temas_principales': [
-            {'palabra': palabra, 'frecuencia': freq} 
-            for palabra, freq in palabras_frecuentes[:5]
-        ]
-    }
-    
-    return resumen
 
 
 def extraer_informacion_hablantes(json_transcripcion):
@@ -80,97 +32,33 @@ def extraer_informacion_hablantes(json_transcripcion):
         json_transcripcion (dict): JSON completo de Speechmatics
     
     Returns:
-        dict: Información de cada hablante
+        dict: Información de cada hablante (vacío ya que no se necesitan estadísticas)
     """
-    resultados = json_transcripcion.get('results', [])
-    
-    hablantes = {}
-    hablante_actual = None
-    palabras_hablante = []
-    
-    for item in resultados:
-        if item['type'] == 'word':
-            if 'speaker' in item:
-                nuevo_hablante = item['speaker']
-                
-                if hablante_actual and nuevo_hablante != hablante_actual:
-                    if hablante_actual not in hablantes:
-                        hablantes[hablante_actual] = {
-                            'palabras': 0,
-                            'intervenciones': 0,
-                            'texto_completo': []
-                        }
-                    hablantes[hablante_actual]['palabras'] += len(palabras_hablante)
-                    hablantes[hablante_actual]['intervenciones'] += 1
-                    hablantes[hablante_actual]['texto_completo'].append(' '.join(palabras_hablante))
-                    palabras_hablante = []
-                
-                hablante_actual = nuevo_hablante
-            
-            palabras_hablante.append(item['alternatives'][0]['content'])
-    
-    # Guardar el último hablante
-    if hablante_actual:
-        if hablante_actual not in hablantes:
-            hablantes[hablante_actual] = {
-                'palabras': 0, 
-                'intervenciones': 0,
-                'texto_completo': []
-            }
-        hablantes[hablante_actual]['palabras'] += len(palabras_hablante)
-        hablantes[hablante_actual]['intervenciones'] += 1
-        hablantes[hablante_actual]['texto_completo'].append(' '.join(palabras_hablante))
-    
-    # Calcular promedios y limpiar datos
-    for hablante_id, info in hablantes.items():
-        if info['intervenciones'] > 0:
-            info['promedio_palabras_intervencion'] = round(
-                info['palabras'] / info['intervenciones'], 1
-            )
-        del info['texto_completo']
-    
-    return hablantes
+    return {}
 
 def generar_resumen_completo(texto_transcrito, json_transcripcion):
     """
-    Genera un resumen completo combinando estadísticas, hablantes y contenido
+    Genera un resumen completo
     
     Args:
         texto_transcrito (str): Texto limpio de la transcripción
         json_transcripcion (dict): JSON completo de Speechmatics con metadatos
     
     Returns:
-        dict: Resumen completo con todas las secciones
+        dict: Resumen completo
     """
     logger.info("Generando resumen completo...")
     
-    # Generar resumen básico con estadísticas
+    # Generar resumen básico
     resumen_basico = generar_resumen_basico(texto_transcrito)
-    
-    # Extraer información de hablantes
-    hablantes = extraer_informacion_hablantes(json_transcripcion)
-    
-    # Obtener metadatos del audio
-    metadata = json_transcripcion.get('metadata', {})
-    duracion_segundos = metadata.get('duration', 0)
     
     # Combinar todo
     resumen_completo = {
         'resumen_basico': {
-            'fecha': resumen_basico['fecha'],
-            'estadisticas': {
-                **resumen_basico['estadisticas'],
-                'duracion_audio': round(duracion_segundos, 2),
-                'duracion_minutos': round(duracion_segundos / 60, 1)
-            },
-            'palabras_clave': resumen_basico['palabras_clave'],
-            'temas_principales': resumen_basico['temas_principales']
+            'fecha': resumen_basico['fecha']
         },
-        'hablantes': hablantes,
         'texto_completo': texto_transcrito
     }
-    
-    logger.info("Resumen generado exitosamente")
     
     return resumen_completo
 
@@ -290,7 +178,6 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional."""
     except Exception as e:
         logger.error(f"Error al generar resumen con Gemini: {str(e)}")
         return None
-
 
 def chat_con_gemini(mensaje, contexto_transcripcion, api_key=None, historial_chat=None):
     """
