@@ -40,14 +40,14 @@
                         </svg>
                     </button>
                     <div class="upload-box-new" id="uploadBox">
-                        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma" hidden>
+                        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm" hidden>
                         <div class="upload-content-new">
                             <p>Drag and drop an audio file here</p>
                         </div>
                     </div>
                     <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
                 </div>
-                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC (Max. 100MB)</p>
+                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC, WEBM (Max. 100MB)</p>
 
                 <!-- Audio cargado -->
                 <div class="documents-queue hidden" id="documentsQueue">
@@ -125,7 +125,8 @@
         </div>
     </div>
 
-    <!-- Aplicación principal -->
+    <!-- Scripts -->
+    <script src="./js/recorder.js"></script>
     <script src="./js/main.js"></script>
 </body>
 </html>
