@@ -155,4 +155,3 @@ def procesar_transcripcion_para_texto(resultado):
                 texto_completo += " "
     
     return texto_completo.strip()
-
