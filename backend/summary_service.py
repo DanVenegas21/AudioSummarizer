@@ -47,8 +47,6 @@ def generar_resumen_completo(texto_transcrito, json_transcripcion):
     Returns:
         dict: Resumen completo
     """
-    logger.info("Generando resumen completo...")
-    
     # Generar resumen básico
     resumen_basico = generar_resumen_basico(texto_transcrito)
     
@@ -67,7 +65,6 @@ def generar_resumen_completo(texto_transcrito, json_transcripcion):
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
-    logger.info("Gemini SDK importado correctamente")
 except ImportError:
     GEMINI_AVAILABLE = False
     genai = None
@@ -101,7 +98,6 @@ def _get_gemini_model(api_key):
         _gemini_cache['model'] is None):
         
         try:
-            logger.info(f"Configurando Gemini con modelo: {model_name}")
             genai.configure(api_key=api_key)
             _gemini_cache['api_key'] = api_key
             _gemini_cache['model_name'] = model_name
