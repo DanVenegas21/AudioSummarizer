@@ -5,6 +5,9 @@ const AppState = {
     audioURL: null,
     isProcessing: false,
     lastResult: null,
+    audioRecorder: null,
+    isRecording: false,
+    recordingStartTime: null,
 };
 
 // Elementos del DOM
@@ -13,6 +16,7 @@ const DOM = {
     uploadBox: document.getElementById('uploadBox'),
     fileInput: document.getElementById('fileInput'),
     selectFileBtn: document.getElementById('selectFileBtn'),
+    recordBtn: document.getElementById('recordBtn'),
     documentsQueue: document.getElementById('documentsQueue'),
     queueList: document.getElementById('queueList'),
     processAllBtn: document.getElementById('processAllBtn'),
@@ -66,10 +70,11 @@ function isValidAudioFile(file) {
         'audio/flac',       // .flac
         'audio/x-flac',     // .flac
         'audio/aac',        // .aac
-        'audio/x-ms-wma'    // .wma
+        'audio/x-ms-wma',   // .wma
+        'audio/webm'        // .webm
     ];
     
-    const validExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma'];
+    const validExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma', '.webm'];
     const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
     
     return validTypes.includes(file.type) || validExtensions.includes(fileExtension);
@@ -204,6 +209,114 @@ function clearCurrentAudio() {
     DOM.fileInput.value = '';
 }
 
+/* FUNCIONES DE GRABACIÓN */
+/* Inicia la grabación de audio */
+async function startRecording() {
+    try {
+        // Si ya hay un archivo cargado, limpiar
+        if (AppState.currentAudioFile) {
+            clearCurrentAudio();
+        }
+
+        // Crear el recorder si no existe
+        if (!AppState.audioRecorder) {
+            AppState.audioRecorder = new AudioRecorder();
+        }
+
+        // Iniciar grabación
+        await AppState.audioRecorder.startRecording();
+        AppState.isRecording = true;
+        AppState.recordingStartTime = Date.now();
+
+        // Actualizar UI del botón
+        DOM.recordBtn.classList.add('recording');
+        DOM.recordBtn.title = 'Stop Recording';
+        
+        // Deshabilitar otros controles durante la grabación
+        DOM.selectFileBtn.disabled = true;
+        DOM.fileInput.disabled = true;
+
+        // Mostrar indicador de tiempo de grabación
+        updateRecordingTimer();
+
+    } catch (error) {
+        console.error('Error starting recording:', error);
+        showError(error.message);
+        AppState.isRecording = false;
+    }
+}
+
+/* Detiene la grabación de audio */
+async function stopRecording() {
+    try {
+        if (!AppState.audioRecorder || !AppState.isRecording) {
+            return;
+        }
+
+        // Detener el timer
+        if (AppState.recordingTimer) {
+            clearInterval(AppState.recordingTimer);
+            AppState.recordingTimer = null;
+        }
+
+        // Detener grabación y obtener el blob
+        const audioBlob = await AppState.audioRecorder.stopRecording();
+        AppState.isRecording = false;
+
+        // Convertir blob a File
+        const fileName = `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+        const audioFile = new File([audioBlob], fileName, { type: 'audio/webm' });
+
+        // Guardar el archivo en el estado
+        AppState.currentAudioFile = audioFile;
+        AppState.audioURL = URL.createObjectURL(audioFile);
+
+        // Calcular duración de la grabación
+        const duration = (Date.now() - AppState.recordingStartTime) / 1000;
+
+        // Mostrar el archivo en la cola
+        displayAudioInQueue(audioFile, duration);
+
+        // Mostrar la sección de cola
+        DOM.documentsQueue.classList.remove('hidden');
+
+        // Restaurar UI del botón
+        DOM.recordBtn.classList.remove('recording');
+        DOM.recordBtn.title = 'Record Audio';
+
+        // Rehabilitar otros controles
+        DOM.selectFileBtn.disabled = false;
+        DOM.fileInput.disabled = false;
+
+    } catch (error) {
+        console.error('Error stopping recording:', error);
+        showError('Error stopping recording: ' + error.message);
+        AppState.isRecording = false;
+    }
+}
+
+/* Actualiza el timer de grabación */
+function updateRecordingTimer() {
+    AppState.recordingTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - AppState.recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Actualizar el título del botón con el tiempo
+        DOM.recordBtn.title = `Recording... ${timeStr}`;
+    }, 1000);
+}
+
+/* Maneja el click en el botón de grabar */
+function handleRecordButtonClick() {
+    if (AppState.isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
 /* Procesa el audio (envía al backend) */
 async function processAudio() {
     if (!AppState.currentAudioFile) {
@@ -303,6 +416,9 @@ async function processAudio() {
 /* EVENT LISTENERS */
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
+    // Click en el botón de grabar
+    DOM.recordBtn.addEventListener('click', handleRecordButtonClick);
+    
     // Click en el botón de seleccionar archivo
     DOM.selectFileBtn.addEventListener('click', () => {
         DOM.fileInput.click();
@@ -359,6 +475,48 @@ function initializeEventListeners() {
             handleChatMessage();
         }
     });
+}
+
+/* Formatea la transcripción con identificación visual de hablantes */
+function formatTranscriptionWithSpeakers(result) {
+    if (!result.dialogues || result.dialogues.length === 0) {
+        // Fallback al formato antiguo si no hay diálogos estructurados
+        return result.transcription ? result.transcription.replace(/\n/g, '<br>') : 'No transcription available';
+    }
+    
+    // Colores para diferentes hablantes
+    const speakerColors = [
+        '#3B82F6', // Azul
+        '#10B981', // Verde
+        '#F59E0B', // Naranja
+        '#EF4444', // Rojo
+        '#8B5CF6', // Púrpura
+        '#EC4899', // Rosa
+        '#14B8A6', // Turquesa
+        '#F97316', // Naranja oscuro
+    ];
+    
+    let html = '<div class="dialogues-container">';
+    
+    result.dialogues.forEach((dialogue, index) => {
+        const speakerId = dialogue.speaker;
+        const colorIndex = (speakerId.charCodeAt(0) - 65) % speakerColors.length; // A=0, B=1, etc.
+        const color = speakerColors[colorIndex];
+        
+        html += `
+            <div class="dialogue-block" data-speaker="${speakerId}">
+                <div class="speaker-label" style="background-color: ${color}20; border-left: 4px solid ${color};">
+                    <span class="speaker-name" style="color: ${color};">Speaker ${speakerId}</span>
+                </div>
+                <div class="speaker-text">
+                    ${dialogue.text}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
 }
 
 /* Muestra el resumen en la UI */
@@ -464,7 +622,7 @@ function displaySummary(result) {
                     </button>
                 </div>
                 <div class="transcription-text hidden" id="transcriptionContent">
-                    ${result.transcription ? result.transcription.replace(/\n/g, '<br>') : 'No transcription available'}
+                    ${formatTranscriptionWithSpeakers(result)}
                 </div>
             </div>
         </div>
