@@ -60,14 +60,12 @@ def transcribir_audio_service(archivo_audio, api_key, idioma='es', enable_summar
                     audio=archivo_audio,
                     transcription_config=config,
                 )
-                logger.info(f"Job {job_id} enviado exitosamente, esperando transcripción...")
                 
                 # Esperar a que se complete y obtener el resultado en formato JSON
                 # Nota: En producción, se recomienda configurar notificaciones en lugar de polling
                 # Documentación: https://docs.speechmatics.com/speech-to-text/batch/notifications
                 transcript = client.wait_for_completion(job_id, transcription_format="json-v2")
                 
-                logger.info(f"Transcripción completada exitosamente para job {job_id}")
                 return transcript
                 
             except HTTPStatusError as e:
@@ -143,7 +141,7 @@ def procesar_transcripcion_para_texto(resultado):
                 hablante = resultado_item['speaker']
                 if hablante != hablante_actual:
                     hablante_actual = hablante
-                    texto_completo += f"\n\nHablante {hablante}:\n"
+                    texto_completo += f"\n\n[SPEAKER_{hablante}]"
             
             # Añadir palabra
             texto_completo += resultado_item['alternatives'][0]['content']
@@ -155,3 +153,60 @@ def procesar_transcripcion_para_texto(resultado):
                 texto_completo += " "
     
     return texto_completo.strip()
+
+
+def procesar_transcripcion_estructurada(resultado):
+    """
+    Procesa el resultado de la transcripción y lo convierte en una estructura de diálogos
+    
+    Args:
+        resultado (dict): Resultado JSON de Speechmatics
+    
+    Returns:
+        list: Lista de diálogos con información de hablante y texto
+    """
+    
+    if not resultado:
+        return []
+    
+    # Extraer el texto completo
+    resultados = resultado.get('results', [])
+    
+    dialogos = []
+    hablante_actual = None
+    texto_actual = ""
+    
+    for resultado_item in resultados:
+        if resultado_item['type'] == 'word':
+            # Cambio de hablante
+            if 'speaker' in resultado_item:
+                hablante = resultado_item['speaker']
+                if hablante != hablante_actual:
+                    # Guardar el diálogo anterior si existe
+                    if hablante_actual is not None and texto_actual.strip():
+                        dialogos.append({
+                            'speaker': hablante_actual,
+                            'text': texto_actual.strip()
+                        })
+                    
+                    # Iniciar nuevo diálogo
+                    hablante_actual = hablante
+                    texto_actual = ""
+            
+            # Añadir palabra
+            texto_actual += resultado_item['alternatives'][0]['content']
+            
+            # Añadir espacio si es necesario
+            if resultado_item.get('is_eos', False):
+                texto_actual += ". "
+            else:
+                texto_actual += " "
+    
+    # Guardar el último diálogo
+    if hablante_actual is not None and texto_actual.strip():
+        dialogos.append({
+            'speaker': hablante_actual,
+            'text': texto_actual.strip()
+        })
+    
+    return dialogos
