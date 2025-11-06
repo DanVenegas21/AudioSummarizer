@@ -23,16 +23,20 @@ except ImportError:
 # Importar las funciones de los scripts existentes desde backend/
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
-from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics
+from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
 
 # Configurar logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
 logger = logging.getLogger(__name__)
 
-# Silenciar logs
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)  # Solo mostrar errores
+# Silenciar logs de librerías externas y servicios
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('httpx').setLevel(logging.ERROR)
+logging.getLogger('speechmatics').setLevel(logging.ERROR)
+logging.getLogger('speechmatics.batch_client').setLevel(logging.ERROR)
+logging.getLogger('transcription_service').setLevel(logging.ERROR)
+logging.getLogger('summary_service').setLevel(logging.ERROR)
 
 # Inicializar Flask
 app = Flask(__name__)
@@ -42,7 +46,7 @@ CORS(app)  # Permitir CORS para el frontend
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB máximo
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {
-    'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma'
+    'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'webm'
 }
 
 # Crear carpeta de uploads si no existe
@@ -120,8 +124,6 @@ def upload_audio():
         # Obtener tamaño del archivo
         file_size = os.path.getsize(file_path)
         
-        logger.info(f"Archivo subido: {original_filename} -> {unique_filename}")
-        
         return jsonify({
             'success': True,
             'file_id': unique_filename,
@@ -144,7 +146,8 @@ def process_audio():
         - api_key: API key de Speechmatics (opcional si está configurada)
     
     Retorna:
-        - transcription: texto transcrito completo
+        - transcription: texto transcrito completo (con marcadores de hablantes)
+        - dialogues: array de diálogos estructurados por hablante [{speaker: str, text: str}]
         - summary: resumen básico
         - speechmatics_summary: resumen generado por Speechmatics (si disponible)
     """
@@ -180,10 +183,13 @@ def process_audio():
         # Procesar transcripción para obtener texto limpio
         texto_transcrito = procesar_transcripcion_para_texto(resultado_transcripcion)
         
+        # Procesar transcripción estructurada por hablantes
+        dialogos = procesar_transcripcion_estructurada(resultado_transcripcion)
+        
         # Extraer resumen de Speechmatics (si está disponible)
         resumen_speechmatics = extraer_resumen_speechmatics(resultado_transcripcion)
         
-        # Generar resumen básico con estadísticas
+        # Generar resumen básico
         resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
         
         # Generar resumen con IA (Gemini)
@@ -199,13 +205,13 @@ def process_audio():
         response_data = {
             'success': True,
             'transcription': texto_transcrito,
+            'dialogues': dialogos,
             'summary': resumen['resumen_basico']
         }
         
         # Agregar resumen de Speechmatics si está disponible
         if resumen_speechmatics:
             response_data['speechmatics_summary'] = resumen_speechmatics
-            logger.info("Resumen de Speechmatics incluido en la respuesta")
         
         # # Agregar resumen de IA (Gemini) si está disponible
         # if resumen_ia:
@@ -248,8 +254,6 @@ def chat_with_ai():
             return jsonify({
                 'error': 'Gemini API key is required. Please configure GEMINI_API_KEY environment variable or provide it in the request.'
             }), 400
-        
-        logger.info(f"Procesando pregunta de chat: {message[:100]}...")
         
         # Llamar a Gemini para procesar la pregunta
         respuesta = chat_con_gemini(
@@ -316,7 +320,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-    logger.info(f"Frontend disponible en http://localhost:{port}/frontend")
+    print(f"\nFrontend disponible en http://localhost:{port}/frontend\n")
     
     app.run(
         host='0.0.0.0',
