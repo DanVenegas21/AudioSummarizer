@@ -145,11 +145,8 @@ def process_audio():
     
     Retorna:
         - transcription: texto transcrito completo
-        - summary: resumen básico con estadísticas
-        - statistics: estadísticas del audio (palabras, oraciones, duración)
-        - speakers: información de hablantes (intervenciones, palabras)
+        - summary: resumen básico
         - speechmatics_summary: resumen generado por Speechmatics (si disponible)
-        - ai_summary: resumen generado por Gemini AI (si API key configurada)
     """
     try:
         data = request.get_json()
@@ -190,21 +187,19 @@ def process_audio():
         resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
         
         # Generar resumen con IA (Gemini)
-        resumen_ia = None
-        gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
+        # resumen_ia = None
+        # gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
         
-        if gemini_api_key:
-            resumen_ia = generar_resumen_con_gemini(texto_transcrito, gemini_api_key)
-        else:
-            logger.warning("GEMINI_API_KEY no configurada, saltando resumen con IA")
+        # if gemini_api_key:
+        #     resumen_ia = generar_resumen_con_gemini(texto_transcrito, gemini_api_key)
+        # else:
+        #     logger.warning("GEMINI_API_KEY no configurada, saltando resumen con IA")
         
         os.remove(file_path) # Limpiar el archivo subido
         response_data = {
             'success': True,
             'transcription': texto_transcrito,
-            'summary': resumen['resumen_basico'],
-            'speakers': resumen.get('hablantes', {}),
-            'statistics': resumen.get('resumen_basico', {}).get('estadisticas', {})
+            'summary': resumen['resumen_basico']
         }
         
         # Agregar resumen de Speechmatics si está disponible
@@ -212,9 +207,9 @@ def process_audio():
             response_data['speechmatics_summary'] = resumen_speechmatics
             logger.info("Resumen de Speechmatics incluido en la respuesta")
         
-        # Agregar resumen de IA (Gemini) si está disponible
-        if resumen_ia:
-            response_data['ai_summary'] = resumen_ia
+        # # Agregar resumen de IA (Gemini) si está disponible
+        # if resumen_ia:
+        #     response_data['ai_summary'] = resumen_ia
         
         return jsonify(response_data), 200
         
