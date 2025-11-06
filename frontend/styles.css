@@ -114,14 +114,6 @@ body {
     padding: var(--spacing-xl) 0;
 }
 
-.section-title {
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--spacing-sm);
-}
-
 .section-subtitle {
     text-align: center;
     font-size: 1.1rem;
@@ -1072,16 +1064,16 @@ body {
 
 /* AI Summary Section Styles */
 .speechmatics-summary-section {
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-    border: 1px solid #d1d9e6;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 20px;
     margin-bottom: 2rem;
 }
 
 .speechmatics-summary-section h3 {
-    color: var(--primary-dark);
-    border-bottom: 2px solid var(--primary-color);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
     font-size: 1.1rem;
@@ -1089,15 +1081,14 @@ body {
 
 .speechmatics-summary-content {
     background: white;
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: var(--radius-md);
-    line-height: 1.8;
-    color: var(--text-primary);
-    border-left: 4px solid #4A90E2;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary-color);
     box-shadow: var(--shadow-sm);
 }
 
-.ai-summary-section {
+/* .ai-summary-section {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -1191,7 +1182,7 @@ body {
     content: "➡️";
     position: absolute;
     left: 0;
-}
+} */
 
 .chat-input-container {
     display: flex;
