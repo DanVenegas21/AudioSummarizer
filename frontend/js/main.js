@@ -15,7 +15,6 @@ const DOM = {
     selectFileBtn: document.getElementById('selectFileBtn'),
     documentsQueue: document.getElementById('documentsQueue'),
     queueList: document.getElementById('queueList'),
-    queueCount: document.getElementById('queueCount'),
     processAllBtn: document.getElementById('processAllBtn'),
     
     // Preview Section
@@ -184,9 +183,6 @@ function displayAudioInQueue(file, duration) {
     removeBtn.addEventListener('click', () => clearCurrentAudio());
     
     DOM.queueList.appendChild(audioItem);
-    
-    // Actualizar contador
-    DOM.queueCount.textContent = '1 file';
 }
 
 /* Limpia el audio actual */
@@ -203,7 +199,6 @@ function clearCurrentAudio() {
     // Limpiar UI
     DOM.queueList.innerHTML = '';
     DOM.documentsQueue.classList.add('hidden');
-    DOM.queueCount.textContent = '0 files';
     
     // Reset input
     DOM.fileInput.value = '';
@@ -251,7 +246,7 @@ async function processAudio() {
         
         const processData = {
             file_id: fileId,
-            language: 'es'  // Puedes hacer esto configurable
+            language: 'en'
         };
         
         DOM.processAllBtn.innerHTML = `
@@ -306,7 +301,6 @@ async function processAudio() {
 }
 
 /* EVENT LISTENERS */
-
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
     // Click en el botón de seleccionar archivo
@@ -382,44 +376,8 @@ function displaySummary(result) {
     
     // Construir HTML del resumen
     const summary = result.summary;
-    const speakers = result.speakers || {};
-    const statistics = result.statistics || {};
-    const aiSummary = result.ai_summary || null;
+    // const aiSummary = result.ai_summary || null;
     const speechmaticsSummary = result.speechmatics_summary || null;
-    
-    let speakersHTML = '';
-    if (Object.keys(speakers).length > 0) {
-        speakersHTML = `
-            <div class="summary-section">
-                <h3>Speakers</h3>
-                <div class="speakers-grid">
-                    ${Object.entries(speakers).map(([id, info]) => `
-                        <div class="speaker-card">
-                            <div class="speaker-header">
-                                <span class="speaker-name">Speaker ${id}</span>
-                            </div>
-                            <div class="speaker-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Words:</span>
-                                    <span class="stat-value">${info.palabras || 0}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Interventions:</span>
-                                    <span class="stat-value">${info.intervenciones || 0}</span>
-                                </div>
-                                ${info.promedio_palabras_intervencion ? `
-                                <div class="stat-item">
-                                    <span class="stat-label">Avg per intervention:</span>
-                                    <span class="stat-value">${info.promedio_palabras_intervencion}</span>
-                                </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
     
     // Resumen de Speechmatics
     let speechmaticsSummaryHTML = '';
@@ -436,7 +394,7 @@ function displaySummary(result) {
     }
     
     // Resumen inteligente de IA
-    let aiSummaryHTML = '';
+    /* let aiSummaryHTML = '';
     if (aiSummary) {
         aiSummaryHTML = `
             <div class="summary-section ai-summary-section">
@@ -486,7 +444,7 @@ function displaySummary(result) {
                 ` : ''}
             </div>
         `;
-    }
+    } */
     
     panel.innerHTML = `
         <div class="summary-container">
@@ -495,8 +453,6 @@ function displaySummary(result) {
             </div>
             
             ${speechmaticsSummaryHTML}
-            ${aiSummaryHTML}
-            ${speakersHTML}
             
             <div class="summary-section">
                 <div class="transcription-toggle">
