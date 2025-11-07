@@ -20,6 +20,7 @@ const DOM = {
     documentsQueue: document.getElementById('documentsQueue'),
     queueList: document.getElementById('queueList'),
     processAllBtn: document.getElementById('processAllBtn'),
+    languageSelect: document.getElementById('languageSelect'),
     
     // Preview Section
     previewSection: document.getElementById('previewSection'),
@@ -402,9 +403,12 @@ async function processAudio() {
         
         console.log('File uploaded successfully:', fileId);
         
+        // Obtener el idioma seleccionado
+        const selectedLanguage = DOM.languageSelect ? DOM.languageSelect.value : 'en';
+        
         const processData = {
             file_id: fileId,
-            language: 'en'
+            language: selectedLanguage
         };
         
         DOM.processAllBtn.innerHTML = `
@@ -585,6 +589,59 @@ function displaySummary(result) {
             </div>
         `;
     }
+    
+    // Resumen inteligente de IA
+    /* let aiSummaryHTML = '';
+    if (aiSummary) {
+        aiSummaryHTML = `
+            <div class="summary-section ai-summary-section">
+                <h3>AI-Generated Summary (Gemini)</h3>
+                
+                ${aiSummary.resumen_ejecutivo ? `
+                    <div class="ai-executive-summary">
+                        <h4>Executive Summary</h4>
+                        <p>${aiSummary.resumen_ejecutivo}</p>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.temas_principales && aiSummary.temas_principales.length > 0 ? `
+                    <div class="ai-topics">
+                        <h4>Main Topics</h4>
+                        <ul>
+                            ${aiSummary.temas_principales.map(tema => `<li>${tema}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.decisiones_tomadas && aiSummary.decisiones_tomadas.length > 0 ? `
+                    <div class="ai-decisions">
+                        <h4>Decisions Made</h4>
+                        <ul>
+                            ${aiSummary.decisiones_tomadas.map(decision => `<li>${decision}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.tareas_asignadas && aiSummary.tareas_asignadas.length > 0 ? `
+                    <div class="ai-tasks">
+                        <h4>Assigned Tasks</h4>
+                        <ul>
+                            ${aiSummary.tareas_asignadas.map(tarea => `<li>${tarea}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${aiSummary.proximos_pasos && aiSummary.proximos_pasos.length > 0 ? `
+                    <div class="ai-next-steps">
+                        <h4>Next Steps</h4>
+                        <ul>
+                            ${aiSummary.proximos_pasos.map(paso => `<li>${paso}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } */
     
     panel.innerHTML = `
         <div class="summary-container">
