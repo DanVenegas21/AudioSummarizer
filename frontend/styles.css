@@ -152,6 +152,12 @@ body {
     min-width: 150px;
 }
 
+.record-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
 .btn-record {
     flex-shrink: 0;
     width: 48px !important;
@@ -197,6 +203,23 @@ body {
 
 .btn-record.recording:hover {
     background-color: #b91c1c;
+}
+
+.btn-record-system {
+    background-color: #059669 !important;
+}
+
+.btn-record-system:hover {
+    background-color: #047857 !important;
+}
+
+.btn-record-system.recording {
+    background-color: #dc2626 !important;
+    animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.btn-record-system.recording:hover {
+    background-color: #b91c1c !important;
 }
 
 @keyframes pulse-recording {
