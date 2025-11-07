@@ -26,6 +26,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
 from video_service import extraer_audio_de_video, es_archivo_video
+from system_Audio import grabar_audio_sistema, esta_disponible_grabacion_sistema
 
 # Configurar logging
 logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
@@ -87,8 +88,64 @@ def health_check():
     """Endpoint para verificar que el servidor está funcionando"""
     return jsonify({
         'status': 'healthy',
-        'message': 'Server is running'
+        'message': 'Server is running',
+        'system_audio_available': esta_disponible_grabacion_sistema()
     })
+
+@app.route('/api/record-system-audio', methods=['POST'])
+def record_system_audio():
+    """
+    Endpoint para grabar el audio del sistema (loopback)
+    
+    Espera:
+        - duration: duración de la grabación en segundos (opcional, por defecto 30)
+    
+    Retorna:
+        - file_id: ID único del archivo grabado
+        - filename: nombre del archivo
+        - size: tamaño del archivo
+        - duration: duración de la grabación
+    """
+    try:
+        data = request.get_json() or {}
+        duracion = data.get('duration', 30)
+        
+        # Validar duración (máximo 5 minutos)
+        if duracion > 300:
+            return jsonify({'error': 'Maximum recording duration is 5 minutes (300 seconds)'}), 400
+        
+        if duracion < 1:
+            return jsonify({'error': 'Minimum recording duration is 1 second'}), 400
+        
+        logger.info(f"Iniciando grabación de audio del sistema por {duracion} segundos")
+        
+        # Grabar audio del sistema
+        audio_path = grabar_audio_sistema(
+            duracion_segundos=duracion,
+            output_dir=app.config['UPLOAD_FOLDER']
+        )
+        
+        if audio_path is None:
+            return jsonify({
+                'error': 'Failed to record system audio. Make sure your system supports audio loopback.'
+            }), 500
+        
+        # Obtener información del archivo
+        file_id = os.path.basename(audio_path)
+        file_size = os.path.getsize(audio_path)
+        
+        return jsonify({
+            'success': True,
+            'file_id': file_id,
+            'filename': file_id,
+            'size': file_size,
+            'duration': duracion,
+            'message': 'System audio recorded successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al grabar audio del sistema: {str(e)}")
+        return jsonify({'error': f'Error recording system audio: {str(e)}'}), 500
 
 @app.route('/api/upload', methods=['POST'])
 def upload_audio():
@@ -196,7 +253,7 @@ def process_audio():
             return jsonify({'error': 'file_id is required'}), 400
         
         file_id = data['file_id']
-        language = data.get('language', 'es')
+        language = data.get('language')
         api_key = data.get('api_key', os.environ.get('SPEECHMATICS_API_KEY'))
         
         # Verificar que existe el archivo
@@ -314,6 +371,12 @@ def chat_with_ai():
     except Exception as e:
         logger.error(f"Error en chat: {str(e)}", exc_info=True)
         return jsonify({'error': f'Error in chat: {str(e)}'}), 500
+
+# SERVIR ARCHIVOS DE UPLOADS
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """Sirve archivos de la carpeta uploads"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
 @app.route('/<path:path>')
