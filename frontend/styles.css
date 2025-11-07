@@ -181,13 +181,13 @@ body {
 }
 
 .btn-record:hover {
-    background-color: #004080;
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-record:active {
-    transform: scale(0.95);
+    transform: translateY(0);
 }
 
 .btn-record.recording {
@@ -670,6 +670,7 @@ body {
 }
 
 /*BOTONES*/
+/* Estilos base y hover uniformes para todos los botones */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -691,6 +692,10 @@ body {
     cursor: not-allowed;
 }
 
+.btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
 .btn-sm {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
@@ -701,34 +706,14 @@ body {
     height: 14px;
 }
 
-.btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
+.btn-primary,
 .btn-secondary {
     background-color: var(--primary-color);
     color: white;
 }
 
+.btn-primary:hover:not(:disabled),
 .btn-secondary:hover:not(:disabled) {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-success {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.btn-success:hover:not(:disabled) {
     background-color: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
@@ -753,9 +738,9 @@ body {
 }
 
 .btn-success:hover:not(:disabled) {
-    background: linear-gradient(135deg, #1A332B 0%, #1A331A 100%);
+    background: linear-gradient(135deg, #305042 0%, #152619 100%);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-large {
