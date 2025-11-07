@@ -1429,6 +1429,57 @@ body {
     color: var(--primary-color);
 }
 
+/* Language Selector */
+.language-selector {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.language-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.95rem;
+}
+
+.language-label svg {
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.language-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background-color: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.language-select:hover {
+    border-color: var(--primary-color);
+}
+
+.language-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(26, 43, 51, 0.1);
+}
+
+.language-select option {
+    padding: 0.5rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .queue-item {
