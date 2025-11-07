@@ -57,6 +57,26 @@
                     <div class="queue-list" id="queueList">
                         <!-- El audio se agregará dinámicamente aquí -->
                     </div>
+                    
+                    <!-- Selector de idioma -->
+                    <div class="language-selector">
+                        <label for="languageSelect" class="language-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            <span>Transcription Language:</span>
+                        </label>
+                        <select id="languageSelect" class="language-select">
+                            <option value="en" selected>English</option>
+                            <option value="es">Spanish (Español)</option>
+                            <option value="fr">French (Français)</option>
+                            <option value="de">German (Deutsch)</option>
+                            <option value="it">Italian (Italiano)</option>
+                            <option value="pt">Portuguese (Português)</option>
+                        </select>
+                    </div>
+                    
                     <button class="btn btn-success btn-large btn-full-width" id="processAllBtn">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
