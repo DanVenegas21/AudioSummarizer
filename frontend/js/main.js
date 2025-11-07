@@ -8,6 +8,8 @@ const AppState = {
     audioRecorder: null,
     isRecording: false,
     recordingStartTime: null,
+    isRecordingSystem: false,
+    systemRecordingTimer: null,
 };
 
 // Elementos del DOM
@@ -17,6 +19,7 @@ const DOM = {
     fileInput: document.getElementById('fileInput'),
     selectFileBtn: document.getElementById('selectFileBtn'),
     recordBtn: document.getElementById('recordBtn'),
+    recordSystemBtn: document.getElementById('recordSystemBtn'),
     documentsQueue: document.getElementById('documentsQueue'),
     queueList: document.getElementById('queueList'),
     processAllBtn: document.getElementById('processAllBtn'),
@@ -363,6 +366,156 @@ function handleRecordButtonClick() {
     }
 }
 
+/* FUNCIONES DE GRABACIÓN DE AUDIO DEL SISTEMA */
+/* Inicia la grabación de audio del sistema */
+async function startSystemRecording() {
+    try {
+        // Si ya hay un archivo cargado, limpiar
+        if (AppState.currentAudioFile) {
+            clearCurrentAudio();
+        }
+
+        // Solicitar duración al usuario
+        const duracion = prompt('Enter recording duration in seconds (1-300):', '30');
+        
+        if (!duracion) return;
+        
+        const duracionNum = parseInt(duracion);
+        
+        if (isNaN(duracionNum) || duracionNum < 1 || duracionNum > 300) {
+            showError('Invalid duration. Please enter a number between 1 and 300 seconds.');
+            return;
+        }
+
+        AppState.isRecordingSystem = true;
+        AppState.recordingStartTime = Date.now();
+
+        // Actualizar UI del botón
+        DOM.recordSystemBtn.classList.add('recording');
+        DOM.recordSystemBtn.title = 'Recording System Audio...';
+        
+        // Cambiar ícono a cuadrado de detener
+        DOM.recordSystemBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" ry="2"/>
+            </svg>
+        `;
+        
+        // Deshabilitar otros controles durante la grabación
+        DOM.recordBtn.disabled = true;
+        DOM.selectFileBtn.disabled = true;
+        DOM.fileInput.disabled = true;
+
+        // Mostrar indicador de tiempo de grabación
+        updateSystemRecordingTimer(duracionNum);
+
+        // Iniciar grabación en el backend
+        const response = await fetch('http://localhost:5000/api/record-system-audio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                duration: duracionNum
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to record system audio');
+        }
+
+        const data = await response.json();
+        
+        // Detener el timer
+        if (AppState.systemRecordingTimer) {
+            clearInterval(AppState.systemRecordingTimer);
+            AppState.systemRecordingTimer = null;
+        }
+
+        AppState.isRecordingSystem = false;
+
+        // Crear un archivo "virtual" con los datos de la grabación
+        const fileName = data.filename;
+        
+        // Descargar el archivo grabado del servidor
+        const audioResponse = await fetch(`http://localhost:5000/uploads/${fileName}`);
+        const audioBlob = await audioResponse.blob();
+        const audioFile = new File([audioBlob], fileName, { type: 'audio/wav' });
+
+        // Guardar el archivo en el estado
+        AppState.currentAudioFile = audioFile;
+        AppState.audioURL = URL.createObjectURL(audioFile);
+
+        // Mostrar el archivo en la cola
+        displayAudioInQueue(audioFile, duracionNum);
+
+        // Mostrar la sección de cola
+        DOM.documentsQueue.classList.remove('hidden');
+
+        // Restaurar UI del botón
+        restoreSystemRecordButton();
+
+        // Rehabilitar otros controles
+        DOM.recordBtn.disabled = false;
+        DOM.selectFileBtn.disabled = false;
+        DOM.fileInput.disabled = false;
+
+    } catch (error) {
+        console.error('Error recording system audio:', error);
+        showError('Error recording system audio: ' + error.message);
+        AppState.isRecordingSystem = false;
+        
+        // Detener el timer
+        if (AppState.systemRecordingTimer) {
+            clearInterval(AppState.systemRecordingTimer);
+            AppState.systemRecordingTimer = null;
+        }
+        
+        // Restaurar el botón en caso de error
+        restoreSystemRecordButton();
+        DOM.recordBtn.disabled = false;
+        DOM.selectFileBtn.disabled = false;
+        DOM.fileInput.disabled = false;
+    }
+}
+
+/* Actualiza el timer de grabación del sistema */
+function updateSystemRecordingTimer(totalDuration) {
+    let elapsed = 0;
+    AppState.systemRecordingTimer = setInterval(() => {
+        elapsed = Math.floor((Date.now() - AppState.recordingStartTime) / 1000);
+        const remaining = Math.max(0, totalDuration - elapsed);
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Actualizar el título del botón con el tiempo restante
+        DOM.recordSystemBtn.title = `Recording... ${timeStr} remaining`;
+        
+        // Si se acabó el tiempo, detener el timer
+        if (remaining <= 0) {
+            clearInterval(AppState.systemRecordingTimer);
+            AppState.systemRecordingTimer = null;
+        }
+    }, 1000);
+}
+
+/* Restaura el botón de grabación del sistema */
+function restoreSystemRecordButton() {
+    DOM.recordSystemBtn.classList.remove('recording');
+    DOM.recordSystemBtn.title = 'Record System Audio (What\'s Playing)';
+    
+    // Restaurar ícono de audio
+    DOM.recordSystemBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+    `;
+}
+
 /* Procesa el audio/video (envía al backend) */
 async function processAudio() {
     if (!AppState.currentAudioFile) {
@@ -462,6 +615,7 @@ async function processAudio() {
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
     DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
+    DOM.recordSystemBtn.addEventListener('click', startSystemRecording); // Click en el botón de grabar sistema
     
     // Click en el botón de seleccionar archivo
     DOM.selectFileBtn.addEventListener('click', () => {
