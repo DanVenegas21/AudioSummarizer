@@ -25,6 +25,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
+from video_service import extraer_audio_de_video, es_archivo_video
 
 # Configurar logging
 logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
@@ -46,7 +47,10 @@ CORS(app)  # Permitir CORS para el frontend
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB máximo
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {
-    'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'webm'
+    # Formatos de audio
+    'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'webm',
+    # Formatos de video
+    'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'mpeg', 'mpg', '3gp', 'm4v', 'ts'
 }
 
 # Crear carpeta de uploads si no existe
@@ -89,15 +93,17 @@ def health_check():
 @app.route('/api/upload', methods=['POST'])
 def upload_audio():
     """
-    Endpoint para subir archivos de audio
+    Endpoint para subir archivos de audio o video
+    Si es video, se extrae automáticamente el audio
     
     Espera:
-        - archivo de audio en el campo 'audio'
+        - archivo de audio o video en el campo 'audio'
     
     Retorna:
         - file_id: ID único del archivo
         - filename: nombre original del archivo
         - size: tamaño del archivo
+        - is_video: indica si era un archivo de video (opcional)
     """
     try:
         # Verificar que se envió un archivo
@@ -121,15 +127,47 @@ def upload_audio():
         
         file.save(file_path)
         
+        # Verificar si es un archivo de video
+        is_video = es_archivo_video(original_filename)
+        
+        if is_video:
+            logger.info(f"Archivo de video detectado: {original_filename}. Extrayendo audio...")
+            
+            # Extraer audio del video
+            audio_path = extraer_audio_de_video(file_path)
+            
+            if audio_path is None:
+                # Limpiar archivo de video
+                os.remove(file_path)
+                return jsonify({'error': 'Failed to extract audio from video. Make sure the video has an audio track.'}), 500
+            
+            # Reemplazar el archivo de video con el audio extraído
+            os.remove(file_path)
+            
+            # Mover el audio extraído al nombre único original
+            audio_ext = audio_path.rsplit('.', 1)[1].lower()
+            unique_audio_filename = f"{uuid.uuid4().hex}.{audio_ext}"
+            final_audio_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_audio_filename)
+            os.rename(audio_path, final_audio_path)
+            
+            file_path = final_audio_path
+            unique_filename = unique_audio_filename
+        
         # Obtener tamaño del archivo
         file_size = os.path.getsize(file_path)
         
-        return jsonify({
+        response_data = {
             'success': True,
             'file_id': unique_filename,
             'filename': original_filename,
             'size': file_size
-        }), 200
+        }
+        
+        if is_video:
+            response_data['is_video'] = True
+            response_data['message'] = 'Audio extracted from video successfully'
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         logger.error(f"Error al subir archivo: {str(e)}")
