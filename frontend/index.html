@@ -26,8 +26,8 @@
     <!-- SECCIÓN 2: SUBIDA DEL ARCHIVO -->
     <section class="upload-section" id="uploadSection">
         <div class="container">
-            <h2 class="section-title">Upload Your Audio Files</h2>
-            <p class="section-subtitle">"Transform your audio recordings into comprehensive summaries"</p>
+            <h2 class="section-title">Upload Your Audio or Video Files</h2>
+            <p class="section-subtitle">"Transform your audio/video recordings into comprehensive summaries"</p>
             <div class="upload-container-new">
                 <!-- Upload Box con botón a la derecha -->
                 <div class="upload-box-wrapper">
@@ -40,14 +40,14 @@
                         </svg>
                     </button>
                     <div class="upload-box-new" id="uploadBox">
-                        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm" hidden>
+                        <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm,.mp4,.avi,.mov,.mkv,.flv,.wmv,.mpeg,.mpg,.3gp,.m4v,.ts" hidden>
                         <div class="upload-content-new">
-                            <p>Drag and drop an audio file here</p>
+                            <p>Drag and drop an audio or video file here</p>
                         </div>
                     </div>
                     <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
                 </div>
-                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC, WEBM (Max. 100MB)</p>
+                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC, WEBM, MP4, AVI, MOV, MKV, etc. (Max. 100MB)</p>
 
                 <!-- Audio cargado -->
                 <div class="documents-queue hidden" id="documentsQueue">
