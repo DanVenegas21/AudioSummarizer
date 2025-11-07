@@ -57,9 +57,10 @@ function formatDuration(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-/* Valida si el archivo es de audio */
+/* Valida si el archivo es de audio o video */
 function isValidAudioFile(file) {
     const validTypes = [
+        // Tipos de audio
         'audio/mpeg',       // .mp3
         'audio/wav',        // .wav
         'audio/wave',       // .wav
@@ -71,10 +72,24 @@ function isValidAudioFile(file) {
         'audio/x-flac',     // .flac
         'audio/aac',        // .aac
         'audio/x-ms-wma',   // .wma
-        'audio/webm'        // .webm
+        'audio/webm',       // .webm
+        // Tipos de video
+        'video/mp4',        // .mp4
+        'video/x-msvideo',  // .avi
+        'video/quicktime',  // .mov
+        'video/x-matroska', // .mkv
+        'video/x-flv',      // .flv
+        'video/x-ms-wmv',   // .wmv
+        'video/webm',       // .webm
+        'video/mpeg',       // .mpeg
+        'video/3gpp',       // .3gp
+        'video/mp2t'        // .ts
     ];
     
-    const validExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma', '.webm'];
+    const validExtensions = [
+        '.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma', '.webm', // Audio
+        '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.m4v', '.ts' // Video
+    ];
     const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
     
     return validTypes.includes(file.type) || validExtensions.includes(fileExtension);
@@ -110,12 +125,12 @@ function getAudioDuration(file) {
     });
 }
 
-/* MANEJO DE ARCHIVOS DE AUDIO */
-/* Procesa el archivo de audio seleccionado */
+/* MANEJO DE ARCHIVOS DE AUDIO Y VIDEO */
+/* Procesa el archivo de audio o video seleccionado */
 async function handleAudioFile(file) {
     // Validar tipo de archivo
     if (!isValidAudioFile(file)) {
-        showError('Invalid file type. Please select an audio file (MP3, WAV, M4A, OGG, FLAC, AAC, WMA).');
+        showError('Invalid file type. Please select an audio or video file (MP3, WAV, M4A, MP4, AVI, MOV, MKV, etc.).');
         return;
     }
     
@@ -147,8 +162,7 @@ async function handleAudioFile(file) {
 
 /* Muestra el archivo de audio en la cola */
 function displayAudioInQueue(file, duration) {
-    // Limpiar la lista
-    DOM.queueList.innerHTML = '';
+    DOM.queueList.innerHTML = ''; // Limpiar la lista
     
     // Crear elemento de audio
     const audioItem = document.createElement('div');
@@ -198,15 +212,13 @@ function clearCurrentAudio() {
         AppState.audioURL = null;
     }
     
-    // Limpiar estado
-    AppState.currentAudioFile = null;
+    AppState.currentAudioFile = null; // Limpiar estado
     
     // Limpiar UI
     DOM.queueList.innerHTML = '';
     DOM.documentsQueue.classList.add('hidden');
     
-    // Reset input
-    DOM.fileInput.value = '';
+    DOM.fileInput.value = ''; // Reset input
 }
 
 /* FUNCIONES DE GRABACIÓN */
@@ -232,17 +244,29 @@ async function startRecording() {
         DOM.recordBtn.classList.add('recording');
         DOM.recordBtn.title = 'Stop Recording';
         
+        // Cambiar ícono a cuadrado de detener
+        DOM.recordBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" ry="2"/>
+            </svg>
+        `;
+        
         // Deshabilitar otros controles durante la grabación
         DOM.selectFileBtn.disabled = true;
         DOM.fileInput.disabled = true;
 
-        // Mostrar indicador de tiempo de grabación
-        updateRecordingTimer();
+        updateRecordingTimer(); // Mostrar indicador de tiempo de grabación
 
     } catch (error) {
         console.error('Error starting recording:', error);
         showError(error.message);
         AppState.isRecording = false;
+        
+        // Restaurar el botón en caso de error
+        DOM.recordBtn.classList.remove('recording');
+        DOM.recordBtn.title = 'Record Audio';
+        DOM.selectFileBtn.disabled = false;
+        DOM.fileInput.disabled = false;
     }
 }
 
@@ -271,18 +295,25 @@ async function stopRecording() {
         AppState.currentAudioFile = audioFile;
         AppState.audioURL = URL.createObjectURL(audioFile);
 
-        // Calcular duración de la grabación
-        const duration = (Date.now() - AppState.recordingStartTime) / 1000;
+        const duration = (Date.now() - AppState.recordingStartTime) / 1000; // Calcular duración de la grabación
 
-        // Mostrar el archivo en la cola
-        displayAudioInQueue(audioFile, duration);
+        displayAudioInQueue(audioFile, duration); // Mostrar el archivo en la cola
 
-        // Mostrar la sección de cola
-        DOM.documentsQueue.classList.remove('hidden');
+        DOM.documentsQueue.classList.remove('hidden'); // Mostrar la sección de cola
 
         // Restaurar UI del botón
         DOM.recordBtn.classList.remove('recording');
         DOM.recordBtn.title = 'Record Audio';
+        
+        // Restaurar ícono de micrófono
+        DOM.recordBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+        `;
 
         // Rehabilitar otros controles
         DOM.selectFileBtn.disabled = false;
@@ -292,6 +323,20 @@ async function stopRecording() {
         console.error('Error stopping recording:', error);
         showError('Error stopping recording: ' + error.message);
         AppState.isRecording = false;
+        
+        // Asegurar que el botón se restaure en caso de error
+        DOM.recordBtn.classList.remove('recording');
+        DOM.recordBtn.title = 'Record Audio';
+        DOM.recordBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+        `;
+        DOM.selectFileBtn.disabled = false;
+        DOM.fileInput.disabled = false;
     }
 }
 
@@ -317,10 +362,10 @@ function handleRecordButtonClick() {
     }
 }
 
-/* Procesa el audio (envía al backend) */
+/* Procesa el audio/video (envía al backend) */
 async function processAudio() {
     if (!AppState.currentAudioFile) {
-        showError('No audio file selected.');
+        showError('No audio or video file selected.');
         return;
     }
     
@@ -338,7 +383,7 @@ async function processAudio() {
     `;
     
     try {
-        // PASO 1: Subir el archivo
+        // Subir el archivo
         const formData = new FormData();
         formData.append('audio', AppState.currentAudioFile);
         
@@ -386,17 +431,13 @@ async function processAudio() {
         
         console.log('Processing completed:', result);
         
-        // PASO 3: Mostrar el resultado
-        displaySummary(result);
+        displaySummary(result); // Mostrar el resultado
         
-        // Mostrar la sección de preview
-        DOM.previewSection.classList.remove('hidden');
+        DOM.previewSection.classList.remove('hidden'); // Sección de preview
         
-        // Mostrar el chat footer estático
-        DOM.chatFooterStatic.classList.remove('hidden');
+        DOM.chatFooterStatic.classList.remove('hidden'); // Chat footer estático
         
-        // Scroll hacia los resultados
-        DOM.previewSection.scrollIntoView({ behavior: 'smooth' });
+        DOM.previewSection.scrollIntoView({ behavior: 'smooth' }); // Scroll hacia los resultados
         
     } catch (error) {
         console.error('Error processing audio:', error);
@@ -416,8 +457,7 @@ async function processAudio() {
 /* EVENT LISTENERS */
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
-    // Click en el botón de grabar
-    DOM.recordBtn.addEventListener('click', handleRecordButtonClick);
+    DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
     
     // Click en el botón de seleccionar archivo
     DOM.selectFileBtn.addEventListener('click', () => {
@@ -452,8 +492,7 @@ function initializeEventListeners() {
         }
     });
     
-    // Botón de procesar
-    DOM.processAllBtn.addEventListener('click', processAudio);
+    DOM.processAllBtn.addEventListener('click', processAudio); // Botón de procesar
     
     // Modales de error
     DOM.closeModalBtn.addEventListener('click', closeErrorModal);
@@ -466,8 +505,7 @@ function initializeEventListeners() {
         }
     });
     
-    // Chat Footer Estático
-    DOM.sendChatBtn.addEventListener('click', handleChatMessage);
+    DOM.sendChatBtn.addEventListener('click', handleChatMessage); // Chat Footer Estático
     
     DOM.chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -525,16 +563,13 @@ function displaySummary(result) {
     DOM.documentsViewer.innerHTML = '';
     DOM.tabsHeader.innerHTML = '';
     
-    // Guardar el resultado en el estado global (incluye transcripción para el chat)
-    AppState.lastResult = result;
+    AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
     // Crear panel de resumen
     const panel = document.createElement('div');
     panel.className = 'document-panel active';
     
-    // Construir HTML del resumen
-    const summary = result.summary;
-    // const aiSummary = result.ai_summary || null;
+    const summary = result.summary; // Construir HTML del resumen
     const speechmaticsSummary = result.speechmatics_summary || null;
     
     // Resumen de Speechmatics
@@ -550,59 +585,6 @@ function displaySummary(result) {
             </div>
         `;
     }
-    
-    // Resumen inteligente de IA
-    /* let aiSummaryHTML = '';
-    if (aiSummary) {
-        aiSummaryHTML = `
-            <div class="summary-section ai-summary-section">
-                <h3>AI-Generated Summary (Gemini)</h3>
-                
-                ${aiSummary.resumen_ejecutivo ? `
-                    <div class="ai-executive-summary">
-                        <h4>Executive Summary</h4>
-                        <p>${aiSummary.resumen_ejecutivo}</p>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.temas_principales && aiSummary.temas_principales.length > 0 ? `
-                    <div class="ai-topics">
-                        <h4>Main Topics</h4>
-                        <ul>
-                            ${aiSummary.temas_principales.map(tema => `<li>${tema}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.decisiones_tomadas && aiSummary.decisiones_tomadas.length > 0 ? `
-                    <div class="ai-decisions">
-                        <h4>Decisions Made</h4>
-                        <ul>
-                            ${aiSummary.decisiones_tomadas.map(decision => `<li>${decision}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.tareas_asignadas && aiSummary.tareas_asignadas.length > 0 ? `
-                    <div class="ai-tasks">
-                        <h4>Assigned Tasks</h4>
-                        <ul>
-                            ${aiSummary.tareas_asignadas.map(tarea => `<li>${tarea}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.proximos_pasos && aiSummary.proximos_pasos.length > 0 ? `
-                    <div class="ai-next-steps">
-                        <h4>Next Steps</h4>
-                        <ul>
-                            ${aiSummary.proximos_pasos.map(paso => `<li>${paso}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    } */
     
     panel.innerHTML = `
         <div class="summary-container">
@@ -678,9 +660,8 @@ async function handleChatMessage() {
     // Crear elemento de mensaje del usuario
     const userMessage = createChatMessage(message, 'user');
     appendChatMessage(userMessage);
-    
-    // Limpiar input
-    DOM.chatInput.value = '';
+
+    DOM.chatInput.value = ''; // Limpiar input
     
     try {
         // Enviar mensaje al backend
@@ -729,7 +710,7 @@ function createChatMessage(text, sender) {
     const bubbleDiv = document.createElement('div');
     bubbleDiv.className = `chat-bubble chat-bubble-${sender}`;
     
-    // Convertir markdown básico a HTML para mensajes del asistente
+    // Convertir markdown a HTML para mensajes del asistente
     if (sender === 'assistant') {
         bubbleDiv.innerHTML = markdownToHtml(text);
     } else {
@@ -757,9 +738,8 @@ function appendChatMessage(messageElement) {
     }
     
     messagesContainer.appendChild(messageElement);
-    
-    // Scroll al último mensaje
-    messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+    messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });// Scroll al último mensaje
 }
 
 /* Convierte markdown básico a HTML */
@@ -769,13 +749,10 @@ function markdownToHtml(text) {
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
         .replace(/^## (.*$)/gim, '<h2>$1</h2>')
         .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        // Bold
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // Italic
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        // Line breaks
-        .replace(/\n/g, '<br>')
-        // Lists (básico)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')// Italic
+        .replace(/\n/g, '<br>')// Line breaks
+        // Lists
         .replace(/^\- (.*$)/gim, '<li>$1</li>')
         .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
 }
