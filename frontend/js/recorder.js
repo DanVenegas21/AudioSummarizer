@@ -102,4 +102,3 @@ class AudioRecorder {
 
 // Exportar para uso global
 window.AudioRecorder = AudioRecorder;
-
