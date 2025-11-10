@@ -134,3 +134,4 @@ def obtener_info_video(video_path):
         logger.error(f"Error al obtener información del video: {str(e)}")
         return None
 
+
