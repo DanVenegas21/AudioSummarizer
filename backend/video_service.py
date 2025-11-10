@@ -88,9 +88,12 @@ def es_archivo_video(filename):
     
     Returns:
         bool: True si es un video, False si no
+    
+    Nota: webm se excluye porque puede ser tanto audio como video.
+          Use verificar_es_video_real() para una verificación más precisa.
     """
     extensiones_video = {
-        'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm', 
+        'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 
         'mpeg', 'mpg', '3gp', 'm4v', 'ts'
     }
     
@@ -99,6 +102,36 @@ def es_archivo_video(filename):
     
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in extensiones_video
+
+
+def verificar_es_video_real(file_path):
+    """
+    Verifica si un archivo es realmente un video inspeccionando su contenido
+    
+    Args:
+        file_path (str): Ruta al archivo
+    
+    Returns:
+        bool: True si es un video con pista de video, False si no
+    """
+    if not MOVIEPY_AVAILABLE:
+        # Fallback a verificación por extensión
+        return es_archivo_video(os.path.basename(file_path))
+    
+    try:
+        # Intentar abrir como video
+        video = VideoFileClip(file_path)
+        
+        # Verificar que tenga pista de video (fps y size deben existir)
+        has_video = hasattr(video, 'fps') and video.fps is not None and video.size is not None
+        
+        video.close()
+        
+        return has_video
+        
+    except Exception as e:
+        logger.debug(f"El archivo no es un video válido: {str(e)}")
+        return False
 
 
 def obtener_info_video(video_path):
