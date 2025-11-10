@@ -9,9 +9,7 @@ const AppState = {
     isRecording: false,
     recordingStartTime: null,
     recordingTimer: null,
-    isRecordingSystem: false,
-    systemRecordingStartTime: null,
-    systemRecordingTimer: null,
+    recordingType: null, // 'microphone', 'system', 'both'
 };
 
 // Elementos del DOM
@@ -21,7 +19,6 @@ const DOM = {
     fileInput: document.getElementById('fileInput'),
     selectFileBtn: document.getElementById('selectFileBtn'),
     recordBtn: document.getElementById('recordBtn'),
-    recordSystemBtn: document.getElementById('recordSystemBtn'),
     documentsQueue: document.getElementById('documentsQueue'),
     queueList: document.getElementById('queueList'),
     processAllBtn: document.getElementById('processAllBtn'),
@@ -38,6 +35,8 @@ const DOM = {
     errorMessage: document.getElementById('errorMessage'),
     closeModalBtn: document.getElementById('closeModalBtn'),
     closeErrorBtn: document.getElementById('closeErrorBtn'),
+    recordTypeModal: document.getElementById('recordTypeModal'),
+    closeRecordTypeModalBtn: document.getElementById('closeRecordTypeModalBtn'),
     
     // Chat Footer Estático
     chatFooterStatic: document.getElementById('chatFooterStatic'),
@@ -228,27 +227,21 @@ function clearCurrentAudio() {
 }
 
 /* FUNCIONES DE GRABACIÓN */
-/* Inicia la grabación de audio */
-async function startRecording() {
+/* Inicia la grabación de audio según el tipo seleccionado */
+async function startRecording(recordingType) {
     try {
         // Si ya hay un archivo cargado, limpiar
         if (AppState.currentAudioFile) {
             clearCurrentAudio();
         }
 
-        // Crear el recorder si no existe
-        if (!AppState.audioRecorder) {
-            AppState.audioRecorder = new AudioRecorder();
-        }
-
-        // Iniciar grabación
-        await AppState.audioRecorder.startRecording();
+        AppState.recordingType = recordingType;
         AppState.isRecording = true;
         AppState.recordingStartTime = Date.now();
 
         // Actualizar UI del botón
         DOM.recordBtn.classList.add('recording');
-        DOM.recordBtn.title = 'Stop Recording';
+        DOM.recordBtn.title = 'Click to stop recording';
         
         // Cambiar ícono a cuadrado de detener
         DOM.recordBtn.innerHTML = `
@@ -261,25 +254,51 @@ async function startRecording() {
         DOM.selectFileBtn.disabled = true;
         DOM.fileInput.disabled = true;
 
+        if (recordingType === 'microphone') {
+            // Grabación solo del micrófono
+            if (!AppState.audioRecorder) {
+                AppState.audioRecorder = new AudioRecorder();
+            }
+            await AppState.audioRecorder.startRecording();
+            
+        } else if (recordingType === 'system' || recordingType === 'both') {
+            // Grabación del sistema o ambos (se maneja en el backend)
+            const response = await fetch('http://localhost:5000/api/start-system-recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: recordingType
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to start recording');
+            }
+
+            const data = await response.json();
+            console.log('Recording started:', data);
+        }
+
         updateRecordingTimer(); // Mostrar indicador de tiempo de grabación
 
     } catch (error) {
         console.error('Error starting recording:', error);
-        showError(error.message);
+        showError(error.message || 'Error starting recording');
         AppState.isRecording = false;
+        AppState.recordingType = null;
         
         // Restaurar el botón en caso de error
-        DOM.recordBtn.classList.remove('recording');
-        DOM.recordBtn.title = 'Record Audio';
-        DOM.selectFileBtn.disabled = false;
-        DOM.fileInput.disabled = false;
+        restoreRecordButton();
     }
 }
 
 /* Detiene la grabación de audio */
 async function stopRecording() {
     try {
-        if (!AppState.audioRecorder || !AppState.isRecording) {
+        if (!AppState.isRecording) {
             return;
         }
 
@@ -289,60 +308,93 @@ async function stopRecording() {
             AppState.recordingTimer = null;
         }
 
-        // Detener grabación y obtener el blob
-        const audioBlob = await AppState.audioRecorder.stopRecording();
-        AppState.isRecording = false;
+        let audioFile, duration;
 
-        // Convertir blob a File
-        const fileName = `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
-        const audioFile = new File([audioBlob], fileName, { type: 'audio/webm' });
+        if (AppState.recordingType === 'microphone') {
+            // Detener grabación del micrófono
+            if (!AppState.audioRecorder) {
+                throw new Error('No audio recorder found');
+            }
+            
+            const audioBlob = await AppState.audioRecorder.stopRecording();
+            
+            // Convertir blob a File
+            const fileName = `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+            audioFile = new File([audioBlob], fileName, { type: 'audio/webm' });
+            duration = (Date.now() - AppState.recordingStartTime) / 1000;
+            
+        } else if (AppState.recordingType === 'system' || AppState.recordingType === 'both') {
+            // Detener grabación del sistema o ambos
+            const response = await fetch('http://localhost:5000/api/stop-system-recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to stop recording');
+            }
+
+            const recordData = await response.json();
+            console.log('Recording stopped:', recordData);
+
+            // Descargar el archivo grabado
+            const fileResponse = await fetch(`http://localhost:5000/uploads/${recordData.file_id}`);
+            const blob = await fileResponse.blob();
+            
+            const fileName = recordData.filename || `recording_${new Date().toISOString().replace(/[:.]/g, '-')}.wav`;
+            audioFile = new File([blob], fileName, { type: 'audio/wav' });
+            duration = recordData.duration || (Date.now() - AppState.recordingStartTime) / 1000;
+        }
+
+        AppState.isRecording = false;
 
         // Guardar el archivo en el estado
         AppState.currentAudioFile = audioFile;
         AppState.audioURL = URL.createObjectURL(audioFile);
 
-        const duration = (Date.now() - AppState.recordingStartTime) / 1000; // Calcular duración de la grabación
-
         displayAudioInQueue(audioFile, duration); // Mostrar el archivo en la cola
-
         DOM.documentsQueue.classList.remove('hidden'); // Mostrar la sección de cola
 
         // Restaurar UI del botón
-        DOM.recordBtn.classList.remove('recording');
-        DOM.recordBtn.title = 'Record Audio';
-        
-        // Restaurar ícono de micrófono
-        DOM.recordBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-        `;
-
-        // Rehabilitar otros controles
-        DOM.selectFileBtn.disabled = false;
-        DOM.fileInput.disabled = false;
+        restoreRecordButton();
 
     } catch (error) {
         console.error('Error stopping recording:', error);
         showError('Error stopping recording: ' + error.message);
         AppState.isRecording = false;
+        AppState.recordingType = null;
         
         // Asegurar que el botón se restaure en caso de error
-        DOM.recordBtn.classList.remove('recording');
-        DOM.recordBtn.title = 'Record Audio';
-        DOM.recordBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-        `;
-        DOM.selectFileBtn.disabled = false;
-        DOM.fileInput.disabled = false;
+        restoreRecordButton();
+    }
+}
+
+/* Restaura el botón de grabación a su estado normal */
+function restoreRecordButton() {
+    DOM.recordBtn.classList.remove('recording');
+    DOM.recordBtn.title = 'Record Audio';
+    
+    // Restaurar ícono de micrófono
+    DOM.recordBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+    `;
+
+    // Rehabilitar otros controles
+    DOM.selectFileBtn.disabled = false;
+    DOM.fileInput.disabled = false;
+    
+    // Detener el timer si existe
+    if (AppState.recordingTimer) {
+        clearInterval(AppState.recordingTimer);
+        AppState.recordingTimer = null;
     }
 }
 
@@ -359,12 +411,24 @@ function updateRecordingTimer() {
     }, 1000);
 }
 
+/* Muestra el modal de selección de tipo de grabación */
+function showRecordTypeModal() {
+    DOM.recordTypeModal.classList.remove('hidden');
+}
+
+/* Cierra el modal de selección de tipo de grabación */
+function closeRecordTypeModal() {
+    DOM.recordTypeModal.classList.add('hidden');
+}
+
 /* Maneja el click en el botón de grabar */
 function handleRecordButtonClick() {
     if (AppState.isRecording) {
+        // Si está grabando, detener según el tipo
         stopRecording();
     } else {
-        startRecording();
+        // Si no está grabando, mostrar modal de selección
+        showRecordTypeModal();
     }
 }
 
@@ -627,7 +691,25 @@ async function processAudio() {
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
     DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
-    DOM.recordSystemBtn.addEventListener('click', handleSystemRecordButtonClick); // Click en el botón de grabar audio del sistema
+    
+    // Modal de selección de tipo de grabación
+    DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
+    
+    // Cerrar modal al hacer click fuera
+    DOM.recordTypeModal.addEventListener('click', (e) => {
+        if (e.target === DOM.recordTypeModal) {
+            closeRecordTypeModal();
+        }
+    });
+    
+    // Manejar selección de tipo de grabación
+    document.querySelectorAll('.record-type-option').forEach(button => {
+        button.addEventListener('click', () => {
+            const type = button.getAttribute('data-type');
+            closeRecordTypeModal();
+            startRecording(type);
+        });
+    });
     
     // Click en el botón de seleccionar archivo
     DOM.selectFileBtn.addEventListener('click', () => {

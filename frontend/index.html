@@ -31,23 +31,14 @@
             <div class="upload-container-new">
                 <!-- Upload Box con botones a los lados -->
                 <div class="upload-box-wrapper">
-                    <div class="record-buttons-group">
-                        <button class="btn btn-record" id="recordBtn" title="Record Microphone Audio">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                <line x1="12" y1="19" x2="12" y2="23"/>
-                                <line x1="8" y1="23" x2="16" y2="23"/>
-                            </svg>
-                        </button>
-                        <button class="btn btn-record btn-record-system" id="recordSystemBtn" title="Record System Audio (What's Playing)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 18V5l12-2v13"></path>
-                                <circle cx="6" cy="18" r="3"></circle>
-                                <circle cx="18" cy="16" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
+                    <button class="btn btn-record" id="recordBtn" title="Record Audio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
                     <div class="upload-box-new" id="uploadBox">
                         <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm,.mp4,.avi,.mov,.mkv,.flv,.wmv,.mpeg,.mpg,.3gp,.m4v,.ts" hidden>
                         <div class="upload-content-new">
@@ -150,6 +141,50 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" id="closeErrorBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Selección de Tipo de Grabación -->
+    <div class="modal hidden" id="recordTypeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Recording Type</h3>
+                <button class="btn-close" id="closeRecordTypeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1.5rem; color: #6b7280;">Choose what audio source you want to record:</p>
+                <div class="record-type-options">
+                    <button class="record-type-option" data-type="microphone">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <h4>Microphone Only</h4>
+                        <p>Record from your microphone</p>
+                    </button>
+                    <button class="record-type-option" data-type="system">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        <h4>System Audio Only</h4>
+                        <p>Record what's playing on your computer</p>
+                    </button>
+                    <button class="record-type-option" data-type="both">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="9" r="3"/>
+                            <path d="M9 12v3a3 3 0 0 0 6 0v-3"/>
+                            <path d="M15 9h6v6"/>
+                            <path d="M18 12l3-3"/>
+                        </svg>
+                        <h4>Microphone + System</h4>
+                        <p>Record both sources simultaneously</p>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

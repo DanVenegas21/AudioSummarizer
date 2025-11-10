@@ -205,23 +205,6 @@ body {
     background-color: #b91c1c;
 }
 
-.btn-record-system {
-    background-color: #059669 !important;
-}
-
-.btn-record-system:hover {
-    background-color: #047857 !important;
-}
-
-.btn-record-system.recording {
-    background-color: #dc2626 !important;
-    animation: pulse-recording 1.5s ease-in-out infinite;
-}
-
-.btn-record-system.recording:hover {
-    background-color: #b91c1c !important;
-}
-
 @keyframes pulse-recording {
     0%, 100% {
         box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
@@ -895,6 +878,57 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-sm);
+}
+
+/* Modal de selección de tipo de grabación */
+#recordTypeModal .modal-content {
+    max-width: 700px;
+}
+
+.record-type-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.record-type-option {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+}
+
+.record-type-option:hover {
+    border-color: var(--primary-color);
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.record-type-option svg {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.record-type-option h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.record-type-option p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
 }
 
 /*UTILIDADES*/
