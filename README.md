@@ -228,14 +228,6 @@ Chat con IA sobre la transcripción.
 - **Video**: moviepy
 - **Frontend**: Vanilla JavaScript (sin frameworks)
 
-## Documentación Adicional
-
-Para información más detallada, consulta:
-- [INSTALL.md](INSTALL.md) - Guía detallada de instalación
-- [CONFIGURATION.md](CONFIGURATION.md) - Opciones de configuración
-- [SOPORTE_VIDEO.md](SOPORTE_VIDEO.md) - Manejo de archivos de video
-- [RESUMEN_OPTIONS.md](RESUMEN_OPTIONS.md) - Opciones de resumen
-
 ## Contribuir
 
 Las contribuciones son bienvenidas. Por favor:
@@ -244,10 +236,6 @@ Las contribuciones son bienvenidas. Por favor:
 3. Commit tus cambios
 4. Push a la rama
 5. Abre un Pull Request
-
-## Licencia
-
-Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## Soporte
 
@@ -259,4 +247,5 @@ Para preguntas o problemas:
 ---
 
 **Desarrollado por**: The Law Offices of Manuel Solis
+
 
