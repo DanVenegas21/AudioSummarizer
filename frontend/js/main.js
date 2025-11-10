@@ -8,7 +8,9 @@ const AppState = {
     audioRecorder: null,
     isRecording: false,
     recordingStartTime: null,
+    recordingTimer: null,
     isRecordingSystem: false,
+    systemRecordingStartTime: null,
     systemRecordingTimer: null,
 };
 
@@ -376,19 +378,22 @@ async function startSystemRecording() {
         }
 
         // Solicitar duración al usuario
-        const duracion = prompt('Enter recording duration in seconds (1-300):', '30');
+        const duracion = prompt('Duration of system audio recording (in seconds):', '30');
         
-        if (!duracion) return;
+        if (duracion === null) {
+            // Usuario canceló
+            return;
+        }
         
         const duracionNum = parseInt(duracion);
         
         if (isNaN(duracionNum) || duracionNum < 1 || duracionNum > 300) {
-            showError('Invalid duration. Please enter a number between 1 and 300 seconds.');
+            showError('Invalid duration. Please enter a number between 1 and 300 seconds (5 minutes max).');
             return;
         }
 
         AppState.isRecordingSystem = true;
-        AppState.recordingStartTime = Date.now();
+        AppState.systemRecordingStartTime = Date.now();
 
         // Actualizar UI del botón
         DOM.recordSystemBtn.classList.add('recording');
@@ -402,14 +407,14 @@ async function startSystemRecording() {
         `;
         
         // Deshabilitar otros controles durante la grabación
-        DOM.recordBtn.disabled = true;
         DOM.selectFileBtn.disabled = true;
         DOM.fileInput.disabled = true;
+        DOM.recordBtn.disabled = true;
 
-        // Mostrar indicador de tiempo de grabación
-        updateSystemRecordingTimer(duracionNum);
+        // Mostrar mensaje de progreso
+        showRecordingProgress(duracionNum);
 
-        // Iniciar grabación en el backend
+        // Iniciar grabación en el backend (bloquea hasta que termine)
         const response = await fetch('http://localhost:5000/api/record-system-audio', {
             method: 'POST',
             headers: {
@@ -427,86 +432,62 @@ async function startSystemRecording() {
 
         const data = await response.json();
         
-        // Detener el timer
-        if (AppState.systemRecordingTimer) {
-            clearInterval(AppState.systemRecordingTimer);
-            AppState.systemRecordingTimer = null;
-        }
+        console.log('System audio recorded:', data);
+        
+        // La grabación ya terminó, procesar el audio
+        await stopSystemRecording(data);
 
+    } catch (error) {
+        console.error('Error recording system audio:', error);
+        showError(error.message || 'Error recording system audio. Make sure your system supports audio loopback.');
+        AppState.isRecordingSystem = false;
+        
+        // Restaurar el botón en caso de error
+        restoreSystemRecordButton();
+    }
+}
+
+/* Detiene la grabación de audio del sistema */
+async function stopSystemRecording(recordData) {
+    try {
         AppState.isRecordingSystem = false;
 
-        // Crear un archivo "virtual" con los datos de la grabación
-        const fileName = data.filename;
+        // Crear un File object desde el archivo grabado
+        const response = await fetch(`http://localhost:5000/uploads/${recordData.file_id}`);
+        const blob = await response.blob();
         
-        // Descargar el archivo grabado del servidor
-        const audioResponse = await fetch(`http://localhost:5000/uploads/${fileName}`);
-        const audioBlob = await audioResponse.blob();
-        const audioFile = new File([audioBlob], fileName, { type: 'audio/wav' });
+        const fileName = recordData.filename || `system_recording_${new Date().toISOString().replace(/[:.]/g, '-')}.wav`;
+        const audioFile = new File([blob], fileName, { type: 'audio/wav' });
 
         // Guardar el archivo en el estado
         AppState.currentAudioFile = audioFile;
         AppState.audioURL = URL.createObjectURL(audioFile);
 
-        // Mostrar el archivo en la cola
-        displayAudioInQueue(audioFile, duracionNum);
+        const duration = recordData.duration || (Date.now() - AppState.systemRecordingStartTime) / 1000;
 
-        // Mostrar la sección de cola
+        displayAudioInQueue(audioFile, duration);
+
         DOM.documentsQueue.classList.remove('hidden');
 
         // Restaurar UI del botón
         restoreSystemRecordButton();
 
-        // Rehabilitar otros controles
-        DOM.recordBtn.disabled = false;
-        DOM.selectFileBtn.disabled = false;
-        DOM.fileInput.disabled = false;
-
     } catch (error) {
-        console.error('Error recording system audio:', error);
-        showError('Error recording system audio: ' + error.message);
+        console.error('Error stopping system recording:', error);
+        showError('Error processing recorded audio: ' + error.message);
         AppState.isRecordingSystem = false;
         
-        // Detener el timer
-        if (AppState.systemRecordingTimer) {
-            clearInterval(AppState.systemRecordingTimer);
-            AppState.systemRecordingTimer = null;
-        }
-        
-        // Restaurar el botón en caso de error
+        // Asegurar que el botón se restaure en caso de error
         restoreSystemRecordButton();
-        DOM.recordBtn.disabled = false;
-        DOM.selectFileBtn.disabled = false;
-        DOM.fileInput.disabled = false;
     }
 }
 
-/* Actualiza el timer de grabación del sistema */
-function updateSystemRecordingTimer(totalDuration) {
-    let elapsed = 0;
-    AppState.systemRecordingTimer = setInterval(() => {
-        elapsed = Math.floor((Date.now() - AppState.recordingStartTime) / 1000);
-        const remaining = Math.max(0, totalDuration - elapsed);
-        const minutes = Math.floor(remaining / 60);
-        const seconds = remaining % 60;
-        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Actualizar el título del botón con el tiempo restante
-        DOM.recordSystemBtn.title = `Recording... ${timeStr} remaining`;
-        
-        // Si se acabó el tiempo, detener el timer
-        if (remaining <= 0) {
-            clearInterval(AppState.systemRecordingTimer);
-            AppState.systemRecordingTimer = null;
-        }
-    }, 1000);
-}
-
-/* Restaura el botón de grabación del sistema */
+/* Restaura el botón de grabación del sistema a su estado normal */
 function restoreSystemRecordButton() {
     DOM.recordSystemBtn.classList.remove('recording');
     DOM.recordSystemBtn.title = 'Record System Audio (What\'s Playing)';
     
-    // Restaurar ícono de audio
+    // Restaurar ícono de música
     DOM.recordSystemBtn.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18V5l12-2v13"></path>
@@ -514,6 +495,50 @@ function restoreSystemRecordButton() {
             <circle cx="18" cy="16" r="3"></circle>
         </svg>
     `;
+
+    // Rehabilitar otros controles
+    DOM.selectFileBtn.disabled = false;
+    DOM.fileInput.disabled = false;
+    DOM.recordBtn.disabled = false;
+    
+    // Detener el timer si existe
+    if (AppState.systemRecordingTimer) {
+        clearInterval(AppState.systemRecordingTimer);
+        AppState.systemRecordingTimer = null;
+    }
+}
+
+/* Muestra el progreso de la grabación del sistema */
+function showRecordingProgress(duracionTotal) {
+    let segundosTranscurridos = 0;
+    
+    AppState.systemRecordingTimer = setInterval(() => {
+        segundosTranscurridos++;
+        const segundosRestantes = duracionTotal - segundosTranscurridos;
+        const minutes = Math.floor(segundosRestantes / 60);
+        const seconds = segundosRestantes % 60;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Actualizar el título del botón con el tiempo restante
+        DOM.recordSystemBtn.title = `Recording System Audio... ${timeStr} remaining`;
+        
+        // Si llegamos al final, detener el timer
+        if (segundosRestantes <= 0) {
+            clearInterval(AppState.systemRecordingTimer);
+            AppState.systemRecordingTimer = null;
+            DOM.recordSystemBtn.title = 'Processing recorded audio...';
+        }
+    }, 1000);
+}
+
+/* Maneja el click en el botón de grabar audio del sistema */
+function handleSystemRecordButtonClick() {
+    if (AppState.isRecordingSystem) {
+        // No se puede cancelar la grabación del sistema una vez iniciada
+        showError('System recording in progress. Please wait for it to complete.');
+    } else {
+        startSystemRecording();
+    }
 }
 
 /* Procesa el audio/video (envía al backend) */
@@ -615,7 +640,7 @@ async function processAudio() {
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
     DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
-    DOM.recordSystemBtn.addEventListener('click', startSystemRecording); // Click en el botón de grabar sistema
+    DOM.recordSystemBtn.addEventListener('click', handleSystemRecordButtonClick); // Click en el botón de grabar audio del sistema
     
     // Click en el botón de seleccionar archivo
     DOM.selectFileBtn.addEventListener('click', () => {
