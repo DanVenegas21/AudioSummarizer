@@ -26,7 +26,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
 from video_service import extraer_audio_de_video, es_archivo_video
-from system_Audio import grabar_audio_sistema, esta_disponible_grabacion_sistema
+from system_Audio import grabar_audio_sistema, esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
 
 # Configurar logging
 logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
@@ -89,8 +89,78 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'message': 'Server is running',
-        'system_audio_available': esta_disponible_grabacion_sistema()
+        'system_audio_available': esta_disponible_grabacion_sistema(),
+        'system_audio_recording': esta_grabando_sistema()
     })
+
+@app.route('/api/start-system-recording', methods=['POST'])
+def start_system_recording():
+    """
+    Endpoint para iniciar la grabación continua del audio del sistema
+    
+    Retorna:
+        - file_id: ID único del archivo que se está grabando
+        - status: 'recording'
+    """
+    try:
+        logger.info("Iniciando grabación continua del audio del sistema")
+        
+        # Iniciar grabación continua
+        result = iniciar_grabacion_sistema(output_dir=app.config['UPLOAD_FOLDER'])
+        
+        if result is None:
+            return jsonify({
+                'error': 'Failed to start system audio recording. Make sure your system supports audio loopback and there is no active recording.'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'file_id': result['file_id'],
+            'status': result['status'],
+            'message': 'System audio recording started'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al iniciar grabación del sistema: {str(e)}")
+        return jsonify({'error': f'Error starting system audio recording: {str(e)}'}), 500
+
+
+@app.route('/api/stop-system-recording', methods=['POST'])
+def stop_system_recording():
+    """
+    Endpoint para detener la grabación del audio del sistema
+    
+    Retorna:
+        - file_id: ID único del archivo grabado
+        - filename: nombre del archivo
+        - size: tamaño del archivo
+        - duration: duración de la grabación
+        - status: 'completed'
+    """
+    try:
+        logger.info("Deteniendo grabación del audio del sistema")
+        
+        # Detener grabación
+        result = detener_grabacion_sistema(output_dir=app.config['UPLOAD_FOLDER'])
+        
+        if result is None:
+            return jsonify({
+                'error': 'No active recording found or failed to stop recording.'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'file_id': result['file_id'],
+            'filename': result['filename'],
+            'size': result['size'],
+            'duration': result['duration'],
+            'status': result['status'],
+            'message': 'System audio recording stopped and saved'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al detener grabación del sistema: {str(e)}")
+        return jsonify({'error': f'Error stopping system audio recording: {str(e)}'}), 500
 
 @app.route('/api/record-system-audio', methods=['POST'])
 def record_system_audio():
@@ -287,15 +357,6 @@ def process_audio():
         # Generar resumen básico
         resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
         
-        # Generar resumen con IA (Gemini)
-        # resumen_ia = None
-        # gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
-        
-        # if gemini_api_key:
-        #     resumen_ia = generar_resumen_con_gemini(texto_transcrito, gemini_api_key)
-        # else:
-        #     logger.warning("GEMINI_API_KEY no configurada, saltando resumen con IA")
-        
         os.remove(file_path) # Limpiar el archivo subido
         response_data = {
             'success': True,
@@ -307,10 +368,6 @@ def process_audio():
         # Agregar resumen de Speechmatics si está disponible
         if resumen_speechmatics:
             response_data['speechmatics_summary'] = resumen_speechmatics
-        
-        # # Agregar resumen de IA (Gemini) si está disponible
-        # if resumen_ia:
-        #     response_data['ai_summary'] = resumen_ia
         
         return jsonify(response_data), 200
         
