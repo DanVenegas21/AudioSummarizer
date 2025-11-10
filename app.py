@@ -25,8 +25,8 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
 from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
-from video_service import extraer_audio_de_video, es_archivo_video
-from system_Audio import grabar_audio_sistema, esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
+from video_service import extraer_audio_de_video, es_archivo_video, verificar_es_video_real
+from system_Audio import esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
 
 # Configurar logging
 logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
@@ -96,33 +96,48 @@ def health_check():
 @app.route('/api/start-system-recording', methods=['POST'])
 def start_system_recording():
     """
-    Endpoint para iniciar la grabación continua del audio del sistema
+    Endpoint para iniciar la grabación continua del audio
+    
+    Espera:
+        - type: tipo de grabación ('microphone', 'system', 'both')
     
     Retorna:
         - file_id: ID único del archivo que se está grabando
         - status: 'recording'
+        - type: tipo de grabación
     """
     try:
-        logger.info("Iniciando grabación continua del audio del sistema")
+        data = request.get_json() or {}
+        recording_type = data.get('type', 'both')
+        
+        # Validar tipo de grabación
+        if recording_type not in ['microphone', 'system', 'both']:
+            return jsonify({'error': 'Invalid recording type. Must be microphone, system, or both'}), 400
+        
+        logger.info(f"Iniciando grabación continua (tipo: {recording_type})")
         
         # Iniciar grabación continua
-        result = iniciar_grabacion_sistema(output_dir=app.config['UPLOAD_FOLDER'])
+        result = iniciar_grabacion_sistema(
+            output_dir=app.config['UPLOAD_FOLDER'],
+            recording_type=recording_type
+        )
         
         if result is None:
             return jsonify({
-                'error': 'Failed to start system audio recording. Make sure your system supports audio loopback and there is no active recording.'
+                'error': 'Failed to start recording. Make sure your system supports the selected recording type and there is no active recording.'
             }), 500
         
         return jsonify({
             'success': True,
             'file_id': result['file_id'],
             'status': result['status'],
-            'message': 'System audio recording started'
+            'type': result['type'],
+            'message': f'Recording started ({recording_type})'
         }), 200
         
     except Exception as e:
-        logger.error(f"Error al iniciar grabación del sistema: {str(e)}")
-        return jsonify({'error': f'Error starting system audio recording: {str(e)}'}), 500
+        logger.error(f"Error al iniciar grabación: {str(e)}")
+        return jsonify({'error': f'Error starting recording: {str(e)}'}), 500
 
 
 @app.route('/api/stop-system-recording', methods=['POST'])
@@ -162,61 +177,6 @@ def stop_system_recording():
         logger.error(f"Error al detener grabación del sistema: {str(e)}")
         return jsonify({'error': f'Error stopping system audio recording: {str(e)}'}), 500
 
-@app.route('/api/record-system-audio', methods=['POST'])
-def record_system_audio():
-    """
-    Endpoint para grabar el audio del sistema (loopback)
-    
-    Espera:
-        - duration: duración de la grabación en segundos (opcional, por defecto 30)
-    
-    Retorna:
-        - file_id: ID único del archivo grabado
-        - filename: nombre del archivo
-        - size: tamaño del archivo
-        - duration: duración de la grabación
-    """
-    try:
-        data = request.get_json() or {}
-        duracion = data.get('duration', 30)
-        
-        # Validar duración (máximo 5 minutos)
-        if duracion > 300:
-            return jsonify({'error': 'Maximum recording duration is 5 minutes (300 seconds)'}), 400
-        
-        if duracion < 1:
-            return jsonify({'error': 'Minimum recording duration is 1 second'}), 400
-        
-        logger.info(f"Iniciando grabación de audio del sistema por {duracion} segundos")
-        
-        # Grabar audio del sistema
-        audio_path = grabar_audio_sistema(
-            duracion_segundos=duracion,
-            output_dir=app.config['UPLOAD_FOLDER']
-        )
-        
-        if audio_path is None:
-            return jsonify({
-                'error': 'Failed to record system audio. Make sure your system supports audio loopback.'
-            }), 500
-        
-        # Obtener información del archivo
-        file_id = os.path.basename(audio_path)
-        file_size = os.path.getsize(audio_path)
-        
-        return jsonify({
-            'success': True,
-            'file_id': file_id,
-            'filename': file_id,
-            'size': file_size,
-            'duration': duracion,
-            'message': 'System audio recorded successfully'
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error al grabar audio del sistema: {str(e)}")
-        return jsonify({'error': f'Error recording system audio: {str(e)}'}), 500
-
 @app.route('/api/upload', methods=['POST'])
 def upload_audio():
     """
@@ -254,8 +214,15 @@ def upload_audio():
         
         file.save(file_path)
         
-        # Verificar si es un archivo de video
-        is_video = es_archivo_video(original_filename)
+        # Verificar si es un archivo de video (primero por extensión, luego por contenido)
+        podria_ser_video = es_archivo_video(original_filename)
+        is_video = False
+        
+        if podria_ser_video:
+            # Verificar realmente si es un video inspeccionando el contenido
+            is_video = verificar_es_video_real(file_path)
+            if not is_video:
+                logger.info(f"Archivo {original_filename} tiene extensión de video pero no contiene pista de video, tratando como audio")
         
         if is_video:
             logger.info(f"Archivo de video detectado: {original_filename}. Extrayendo audio...")
@@ -357,6 +324,15 @@ def process_audio():
         # Generar resumen básico
         resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
         
+        # Generar resumen con IA (Gemini)
+        # resumen_ia = None
+        # gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
+        
+        # if gemini_api_key:
+        #     resumen_ia = generar_resumen_con_gemini(texto_transcrito, gemini_api_key)
+        # else:
+        #     logger.warning("GEMINI_API_KEY no configurada, saltando resumen con IA")
+        
         os.remove(file_path) # Limpiar el archivo subido
         response_data = {
             'success': True,
@@ -368,6 +344,10 @@ def process_audio():
         # Agregar resumen de Speechmatics si está disponible
         if resumen_speechmatics:
             response_data['speechmatics_summary'] = resumen_speechmatics
+        
+        # # Agregar resumen de IA (Gemini) si está disponible
+        # if resumen_ia:
+        #     response_data['ai_summary'] = resumen_ia
         
         return jsonify(response_data), 200
         
