@@ -24,7 +24,7 @@ except ImportError:
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
-from summary_service import generar_resumen_completo, generar_resumen_con_gemini, chat_con_gemini
+from summary_service import generar_resumen_completo, chat_con_gemini, editar_resumen_con_gemini
 from video_service import extraer_audio_de_video, es_archivo_video, verificar_es_video_real
 from system_Audio import esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
 
@@ -408,6 +408,66 @@ def chat_with_ai():
     except Exception as e:
         logger.error(f"Error en chat: {str(e)}", exc_info=True)
         return jsonify({'error': f'Error in chat: {str(e)}'}), 500
+
+@app.route('/api/edit-summary', methods=['POST'])
+def edit_summary():
+    """
+    Endpoint para editar el resumen usando IA (Gemini)
+    
+    Espera:
+        - instruction: instrucción de edición del usuario
+        - current_summary: resumen actual que se desea editar
+        - context: contexto de la transcripción (requerido)
+        - gemini_api_key: API key de Gemini (opcional si está en variables de entorno)
+    
+    Retorna:
+        - edited_summary: resumen editado
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'instruction' not in data:
+            return jsonify({'error': 'instruction is required'}), 400
+        
+        if 'current_summary' not in data or not data['current_summary']:
+            return jsonify({'error': 'current_summary is required'}), 400
+        
+        if 'context' not in data or not data['context']:
+            return jsonify({'error': 'context (transcription) is required'}), 400
+        
+        instruction = data['instruction']
+        current_summary = data['current_summary']
+        context = data['context']
+        gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
+        
+        if not gemini_api_key:
+            return jsonify({
+                'error': 'Gemini API key is required. Please configure GEMINI_API_KEY environment variable or provide it in the request.'
+            }), 400
+        
+        # Llamar a Gemini para editar el resumen
+        nuevo_resumen = editar_resumen_con_gemini(
+            instruccion=instruction,
+            resumen_actual=current_summary,
+            contexto_transcripcion=context,
+            api_key=gemini_api_key
+        )
+        
+        if nuevo_resumen.startswith("Error:"):
+            return jsonify({
+                'success': False,
+                'error': nuevo_resumen
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'edited_summary': nuevo_resumen
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al editar resumen: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error editing summary: {str(e)}'}), 500
 
 # SERVIR ARCHIVOS DE UPLOADS
 @app.route('/uploads/<path:filename>')
