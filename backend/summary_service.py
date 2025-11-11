@@ -108,72 +108,65 @@ def _get_gemini_model(api_key):
     
     return _gemini_cache['model']
 
-# INTEGRACIÓN
-def generar_resumen_con_gemini(texto, api_key=None):
-    """ Genera un resumen inteligente usando Gemini """
+def editar_resumen_con_gemini(instruccion, resumen_actual, contexto_transcripcion, api_key=None):
+    """
+    Edita o regenera el resumen basándose en las instrucciones del usuario
+    
+    Args:
+        instruccion (str): Instrucción de edición del usuario
+        resumen_actual (str): Resumen actual que se desea editar
+        contexto_transcripcion (str): Texto de la transcripción completa
+        api_key (str): API key de Google AI Studio
+    
+    Returns:
+        str: Nuevo resumen editado según las instrucciones
+    """
     if not api_key:
-        logger.warning("No se proporcionó API key de Gemini")
-        return None
+        logger.warning("No se proporcionó API key de Gemini para editar resumen")
+        return "Error: API key no configurada"
     
     if not GEMINI_AVAILABLE:
-        logger.error("google-generativeai no está instalado. Instala con: pip install google-generativeai")
-        return None
+        logger.error("google-generativeai no está instalado")
+        return "Error: Gemini no está disponible"
     
     # Obtener modelo desde caché
     model = _get_gemini_model(api_key)
     if not model:
-        logger.error("No se pudo obtener el modelo de Gemini")
-        return None
+        return "Error: No se pudo configurar Gemini"
     
     try:
-        prompt = f"""Eres un asistente experto en análisis de reuniones legales y profesionales.
+        # Construir prompt específico para edición
+        prompt = f"""You are an expert assistant that helps edit and improve summaries of meeting transcriptions.
 
-Analiza la siguiente transcripción y genera un resumen estructurado en formato JSON con estas secciones:
+ORIGINAL TRANSCRIPTION:
+{contexto_transcripcion[:8000]}
 
-1. **resumen_ejecutivo**: Un párrafo conciso con lo más importante
-2. **temas_principales**: Array de los temas clave discutidos
-3. **decisiones_tomadas**: Array de decisiones importantes (si las hay)
-4. **tareas_asignadas**: Array de tareas o acciones pendientes (si las hay)
-5. **proximos_pasos**: Array de siguientes acciones a realizar
-6. **puntos_destacados**: Array de puntos más relevantes
+CURRENT SUMMARY:
+{resumen_actual}
 
-Transcripción:
-{texto}
+USER INSTRUCTION:
+{instruccion}
 
-Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional."""
+TASK:
+Edit the current summary based on the user's instruction. You have access to the original transcription to add or verify information if needed.
+
+GUIDELINES:
+- Follow the user's instruction precisely
+- Maintain professional and clear language
+- Use markdown format for structure (bullet points, bold, etc.)
+- Do not use emojis
+- If the instruction requires information not in the transcription, indicate that clearly
+- Return ONLY the edited summary text, without any preamble or explanation
+
+EDITED SUMMARY:"""
 
         response = model.generate_content(prompt)
-        
-        # Intentar parsear la respuesta como JSON
-        import json
-        try:
-            # Limpiar la respuesta por si tiene markdown
-            response_text = response.text.strip()
-            if response_text.startswith('```json'):
-                response_text = response_text[7:]
-            if response_text.startswith('```'):
-                response_text = response_text[3:]
-            if response_text.endswith('```'):
-                response_text = response_text[:-3]
-            
-            resumen_json = json.loads(response_text.strip())
-
-            return resumen_json
-        except json.JSONDecodeError:
-            # Si no es JSON válido, devolver como texto plano
-
-            return {
-                'resumen_ejecutivo': response.text,
-                'temas_principales': [],
-                'decisiones_tomadas': [],
-                'tareas_asignadas': [],
-                'proximos_pasos': [],
-                'puntos_destacados': []
-            }
+        return response.text
     
     except Exception as e:
-        logger.error(f"Error al generar resumen con Gemini: {str(e)}")
-        return None
+        logger.error(f"Error al editar resumen con Gemini: {str(e)}")
+        return f"Error al editar el resumen: {str(e)}"
+
 
 def chat_con_gemini(mensaje, contexto_transcripcion, api_key=None, historial_chat=None):
     """
