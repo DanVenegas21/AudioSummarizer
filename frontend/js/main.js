@@ -939,6 +939,82 @@ function displaySummary(result) {
     }
 }
 
+/* Detecta si el mensaje del usuario es una instrucción de edición del resumen */
+function isEditInstruction(message) {
+    const editKeywords = [
+        // Palabras relacionadas con edición y cambios
+        'edit', 'change', 'modify', 'update', 'rewrite', 'revise', 'improve',
+        'edita', 'cambia', 'modifica', 'actualiza', 'reescribe', 'revisa', 'mejora',
+        
+        // Palabras relacionadas con formato y longitud
+        'shorter', 'longer', 'brief', 'detailed', 'summarize', 'expand',
+        'más corto', 'más largo', 'breve', 'detallado', 'resume', 'resumir', 'amplía', 'ampliar',
+        
+        // Palabras relacionadas con estructura
+        'bullet', 'points', 'list', 'organize', 'structure', 'format',
+        'viñetas', 'puntos', 'lista', 'organiza', 'organizar', 'estructura', 'formato',
+        
+        // Instrucciones directas
+        'make it', 'hazlo', 'haz que', 'conviértelo', 'ponlo',
+        
+        // Referencias al resumen
+        'the summary', 'this summary', 'el resumen', 'este resumen',
+        
+        // Instrucciones de transformación
+        'translate', 'traduce', 'traducir', 'in spanish', 'in english', 'en español', 'en inglés',
+        'highlight', 'focus on', 'emphasize', 'destaca', 'enfócate', 'enfatiza',
+        'remove', 'add', 'include', 'exclude', 'elimina', 'agrega', 'añade', 'incluye', 'excluye',
+        
+        // Instrucciones de contenido específico
+        'extract', 'extrae', 'show only', 'muestra solo', 'only show',
+        'action items', 'decisions', 'next steps', 'tareas', 'decisiones', 'próximos pasos'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    
+    // Verificar si contiene alguna palabra clave de edición
+    return editKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
+/* Obtiene el resumen actual de la UI */
+function getCurrentSummary() {
+    const summarySection = document.querySelector('.speechmatics-summary-content');
+    if (summarySection) {
+        return summarySection.textContent || summarySection.innerText;
+    }
+    // Si no hay resumen de Speechmatics, retornar un mensaje por defecto
+    return "No summary available yet.";
+}
+
+/* Actualiza el resumen en la UI con el nuevo contenido editado */
+function updateSummaryInUI(newSummary) {
+    const summarySection = document.querySelector('.speechmatics-summary-content');
+    
+    if (summarySection) {
+        // Agregar animación de actualización
+        summarySection.style.transition = 'opacity 0.3s ease';
+        summarySection.style.opacity = '0.3';
+        
+        setTimeout(() => {
+            // Convertir markdown a HTML
+            summarySection.innerHTML = markdownToHtml(newSummary);
+            summarySection.style.opacity = '1';
+            
+            // Remover indicador previo si existe
+            const existingIndicator = summarySection.parentElement.querySelector('.summary-edited-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Agregar el nuevo indicador
+            summarySection.parentElement.insertBefore(indicator, summarySection);
+            
+            // Hacer scroll al resumen actualizado
+            summarySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+    }
+}
+
 /* Maneja el envío de mensajes del chat */
 async function handleChatMessage() {
     const message = DOM.chatInput.value.trim();
@@ -951,6 +1027,9 @@ async function handleChatMessage() {
         return;
     }
     
+    // Detectar si es una instrucción de edición
+    const isEdit = isEditInstruction(message);
+    
     // Deshabilitar input y botón mientras se procesa
     DOM.chatInput.disabled = true;
     DOM.sendChatBtn.disabled = true;
@@ -959,7 +1038,7 @@ async function handleChatMessage() {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"></circle>
         </svg>
-        Thinking...
+        ${isEdit ? 'Editing...' : 'Thinking...'}
     `;
     
     // Crear elemento de mensaje del usuario
@@ -969,27 +1048,61 @@ async function handleChatMessage() {
     DOM.chatInput.value = ''; // Limpiar input
     
     try {
-        // Enviar mensaje al backend
-        const response = await fetch('http://localhost:5000/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                context: AppState.lastResult.transcription
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Error al procesar mensaje');
+        if (isEdit) {
+            // Es una instrucción de edición - llamar al endpoint de edición
+            const currentSummary = getCurrentSummary();
+            
+            const response = await fetch('http://localhost:5000/api/edit-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    instruction: message,
+                    current_summary: currentSummary,
+                    context: AppState.lastResult.transcription
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Error editing summary');
+            }
+            
+            // Actualizar el resumen en la UI
+            updateSummaryInUI(data.edited_summary);
+            
+            // Mostrar confirmación en el chat
+            const confirmMessage = createChatMessage(
+                'I have updated the summary based on your instruction. You can see the changes above.',
+                'assistant'
+            );
+            appendChatMessage(confirmMessage);
+            
+        } else {
+            // Es una pregunta normal - usar el chat estándar
+            const response = await fetch('http://localhost:5000/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    context: AppState.lastResult.transcription
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Error al procesar mensaje');
+            }
+            
+            // Mostrar respuesta de la IA
+            const aiMessage = createChatMessage(data.response, 'assistant');
+            appendChatMessage(aiMessage);
         }
-        
-        // Mostrar respuesta de la IA
-        const aiMessage = createChatMessage(data.response, 'assistant');
-        appendChatMessage(aiMessage);
         
     } catch (error) {
         console.error('Error en chat:', error);
@@ -1049,17 +1162,85 @@ function appendChatMessage(messageElement) {
 
 /* Convierte markdown básico a HTML */
 function markdownToHtml(text) {
+    if (!text) return '';
+    
+    // Procesar línea por línea para manejar listas correctamente
+    const lines = text.split('\n');
+    const output = [];
+    let inList = false;
+    let listType = null; // 'ul' o 'ol'
+    
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Detectar listas con viñetas (* o -)
+        const bulletMatch = line.match(/^[\*\-]\s+(.+)$/);
+        // Detectar listas numeradas (1. 2. etc.)
+        const numberedMatch = line.match(/^\d+\.\s+(.+)$/);
+        
+        if (bulletMatch) {
+            // Es un item de lista con viñetas
+            if (!inList || listType !== 'ul') {
+                if (inList) output.push(`</${listType}>`);
+                output.push('<ul>');
+                inList = true;
+                listType = 'ul';
+            }
+            output.push(`<li>${processInlineMarkdown(bulletMatch[1])}</li>`);
+        } else if (numberedMatch) {
+            // Es un item de lista numerada
+            if (!inList || listType !== 'ol') {
+                if (inList) output.push(`</${listType}>`);
+                output.push('<ol>');
+                inList = true;
+                listType = 'ol';
+            }
+            output.push(`<li>${processInlineMarkdown(numberedMatch[1])}</li>`);
+        } else {
+            // No es un item de lista
+            if (inList) {
+                output.push(`</${listType}>`);
+                inList = false;
+                listType = null;
+            }
+            
+            // Procesar headers
+            if (line.startsWith('### ')) {
+                output.push(`<h3>${processInlineMarkdown(line.substring(4))}</h3>`);
+            } else if (line.startsWith('## ')) {
+                output.push(`<h2>${processInlineMarkdown(line.substring(3))}</h2>`);
+            } else if (line.startsWith('# ')) {
+                output.push(`<h1>${processInlineMarkdown(line.substring(2))}</h1>`);
+            } else if (line.trim() === '') {
+                // Línea vacía - agregar espacio entre párrafos
+                output.push('<br>');
+            } else {
+                // Línea normal
+                output.push(processInlineMarkdown(line));
+                // Agregar <br> solo si la siguiente línea no está vacía y no es parte de una lista
+                if (i < lines.length - 1 && lines[i + 1].trim() !== '' && 
+                    !lines[i + 1].match(/^[\*\-]\s+/) && !lines[i + 1].match(/^\d+\.\s+/)) {
+                    output.push('<br>');
+                }
+            }
+        }
+    }
+    
+    // Cerrar lista si quedó abierta
+    if (inList) {
+        output.push(`</${listType}>`);
+    }
+    
+    return output.join('');
+}
+
+/* Procesa formato inline de markdown (bold, italic, etc.) */
+function processInlineMarkdown(text) {
     return text
-        // Headers
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')// Italic
-        .replace(/\n/g, '<br>')// Line breaks
-        // Lists
-        .replace(/^\- (.*$)/gim, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // Bold
+        .replace(/\*(.+?)\*/g, '<em>$1</em>') // Italic (solo si no es bold)
+        .replace(/__(.+?)__/g, '<strong>$1</strong>') // Bold alternativo
+        .replace(/_(.+?)_/g, '<em>$1</em>'); // Italic alternativo
 }
 
 /* INICIALIZACIÓN */
