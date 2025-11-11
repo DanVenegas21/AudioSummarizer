@@ -1,4 +1,4 @@
-/* ESTILOS GLOBALES*/
+/* ESTILOS GLOBALES */
 * {
     margin: 0;
     padding: 0;
@@ -7,14 +7,14 @@
 
 :root {
     /* Colores principales */
-    --primary-color: #1A2B33;
-    --primary-dark: #305161;
-    --primary-light: #3B6275;
+    --primary-color: #08324A;
+    --primary-dark: #11699C;
+    --primary-light: #1AA0ED;
     
     --danger-color: #ef4444;
     
     /* Colores de texto */
-    --text-primary: #1C2F38;
+    --text-primary: #062436;
     --text-secondary: #6b7280;
     --text-light: #9ca3af;
     
@@ -1151,6 +1151,17 @@ body {
     margin-bottom: 1rem;
     border-left: 3px solid var(--primary-color);
     box-shadow: var(--shadow-sm);
+}
+
+@keyframes slideInIndicator {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* .ai-summary-section {
