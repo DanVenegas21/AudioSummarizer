@@ -25,10 +25,10 @@ const DOM = {
     languageSelect: document.getElementById('languageSelect'),
     
     // Preview Section
-    previewSection: document.getElementById('previewSection'),
     documentsViewer: document.getElementById('documentsViewer'),
     documentsTabs: document.getElementById('documentsTabs'),
     tabsHeader: document.getElementById('tabsHeader'),
+    summaryPlaceholder: document.getElementById('summaryPlaceholder'),
     
     // Modals
     errorModal: document.getElementById('errorModal'),
@@ -38,10 +38,11 @@ const DOM = {
     recordTypeModal: document.getElementById('recordTypeModal'),
     closeRecordTypeModalBtn: document.getElementById('closeRecordTypeModalBtn'),
     
-    // Chat Footer Estático
+    // Chat
     chatFooterStatic: document.getElementById('chatFooterStatic'),
     chatInput: document.getElementById('chatInput'),
-    sendChatBtn: document.getElementById('sendChatBtn')
+    sendChatBtn: document.getElementById('sendChatBtn'),
+    chatMessagesContainer: document.getElementById('chatMessagesContainer')
 };
 
 /* UTILIDADES */
@@ -173,19 +174,19 @@ function displayAudioInQueue(file, duration) {
     const audioItem = document.createElement('div');
     audioItem.className = 'queue-item';
     audioItem.innerHTML = `
-        <div class="queue-item-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18V5l12-2v13"></path>
-                <circle cx="6" cy="18" r="3"></circle>
-                <circle cx="18" cy="16" r="3"></circle>
+        <button class="btn-close btn-remove-item" title="Remove file">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
-        </div>
-        <div class="queue-item-info">
-            <h4 class="queue-item-name">${file.name}</h4>
-            <div class="queue-item-meta">
-                <span class="queue-item-size">${formatFileSize(file.size)}</span>
-                <span class="queue-item-separator">•</span>
-                <span class="queue-item-duration">${formatDuration(duration)}</span>
+        </button>
+        <div class="queue-item-content">
+            <div class="queue-item-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
             </div>
             <div class="audio-player-container">
                 <audio controls class="audio-player">
@@ -193,13 +194,12 @@ function displayAudioInQueue(file, duration) {
                     Your browser does not support the audio element.
                 </audio>
             </div>
+            <div class="queue-item-meta">
+                <span class="queue-item-size">${formatFileSize(file.size)}</span>
+                <span class="queue-item-separator">•</span>
+                <span class="queue-item-duration">${formatDuration(duration)}</span>
+            </div>
         </div>
-        <button class="btn-close btn-remove-item" title="Remove file">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
     `;
     
     // Agregar evento para eliminar
@@ -666,11 +666,9 @@ async function processAudio() {
         
         displaySummary(result); // Mostrar el resultado
         
-        DOM.previewSection.classList.remove('hidden'); // Sección de preview
-        
-        DOM.chatFooterStatic.classList.remove('hidden'); // Chat footer estático
-        
-        DOM.previewSection.scrollIntoView({ behavior: 'smooth' }); // Scroll hacia los resultados
+        // Habilitar el chat
+        DOM.chatInput.disabled = false;
+        DOM.sendChatBtn.disabled = false;
         
     } catch (error) {
         console.error('Error processing audio:', error);
@@ -682,7 +680,7 @@ async function processAudio() {
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
-            Process Audio File
+            Generate Summary
         `;
     }
 }
@@ -811,6 +809,11 @@ function formatTranscriptionWithSpeakers(result) {
 
 /* Muestra el resumen en la UI */
 function displaySummary(result) {
+    // Ocultar el placeholder
+    if (DOM.summaryPlaceholder) {
+        DOM.summaryPlaceholder.style.display = 'none';
+    }
+    
     // Limpiar contenedor previo
     DOM.documentsViewer.innerHTML = '';
     DOM.tabsHeader.innerHTML = '';
@@ -830,7 +833,7 @@ function displaySummary(result) {
         const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
         speechmaticsSummaryHTML = `
             <div class="summary-section speechmatics-summary-section">
-                <h3>Audio Summary (Speechmatics)</h3>
+                <h3>Meeting Summary</h3>
                 <div class="speechmatics-summary-content">
                     ${content}
                 </div>
@@ -893,10 +896,6 @@ function displaySummary(result) {
     
     panel.innerHTML = `
         <div class="summary-container">
-            <div class="summary-header">
-                <h2>Summary</h2>
-            </div>
-            
             ${speechmaticsSummaryHTML}
             
             <div class="summary-section">
@@ -1141,23 +1140,14 @@ function createChatMessage(text, sender) {
 
 /* Agrega un mensaje al contenedor de chat */
 function appendChatMessage(messageElement) {
-    // Si no existe un contenedor de mensajes, crearlo
-    let messagesContainer = document.querySelector('.chat-messages-container');
+    // Usar el contenedor existente del chat
+    const messagesContainer = DOM.chatMessagesContainer;
     
-    if (!messagesContainer) {
-        messagesContainer = document.createElement('div');
-        messagesContainer.className = 'chat-messages-container';
-        
-        // Insertar antes del chat footer
-        DOM.chatFooterStatic.insertBefore(
-            messagesContainer,
-            DOM.chatFooterStatic.firstChild
-        );
+    if (messagesContainer) {
+        messagesContainer.appendChild(messageElement);
+        // Scroll al último mensaje
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-    
-    messagesContainer.appendChild(messageElement);
-
-    messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });// Scroll al último mensaje
 }
 
 /* Convierte markdown básico a HTML */
