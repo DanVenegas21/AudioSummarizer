@@ -23,6 +23,7 @@ const DOM = {
     queueList: document.getElementById('queueList'),
     processAllBtn: document.getElementById('processAllBtn'),
     languageSelect: document.getElementById('languageSelect'),
+    removeAudioBtn: document.getElementById('removeAudioBtn'),
     
     // Preview Section
     documentsViewer: document.getElementById('documentsViewer'),
@@ -136,7 +137,7 @@ function getAudioDuration(file) {
 async function handleAudioFile(file) {
     // Validar tipo de archivo
     if (!isValidAudioFile(file)) {
-        showError('Invalid file type. Please select an audio or video file (MP3, WAV, M4A, MP4, AVI, MOV, MKV, etc.).');
+        showError('Invalid file type. Please select an audio or video file (Supported: MP3, WAV, M4A, OGG, FLAC, AAC, WEBM, MP4, AVI, MOV, MKV, etc.).');
         return;
     }
     
@@ -170,41 +171,17 @@ async function handleAudioFile(file) {
 function displayAudioInQueue(file, duration) {
     DOM.queueList.innerHTML = ''; // Limpiar la lista
     
-    // Crear elemento de audio
+    // Crear elemento de audio simplificado
     const audioItem = document.createElement('div');
-    audioItem.className = 'queue-item';
+    audioItem.className = 'audio-queue-wrapper';
     audioItem.innerHTML = `
-        <button class="btn-close btn-remove-item" title="Remove file">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-        <div class="queue-item-content">
-            <div class="queue-item-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18V5l12-2v13"></path>
-                    <circle cx="6" cy="18" r="3"></circle>
-                    <circle cx="18" cy="16" r="3"></circle>
-                </svg>
-            </div>
-            <div class="audio-player-container">
-                <audio controls class="audio-player">
-                    <source src="${AppState.audioURL}" type="${file.type}">
-                    Your browser does not support the audio element.
-                </audio>
-            </div>
-            <div class="queue-item-meta">
-                <span class="queue-item-size">${formatFileSize(file.size)}</span>
-                <span class="queue-item-separator">•</span>
-                <span class="queue-item-duration">${formatDuration(duration)}</span>
-            </div>
+        <div class="audio-player-container">
+            <audio controls class="audio-player">
+                <source src="${AppState.audioURL}" type="${file.type}">
+                Your browser does not support the audio element.
+            </audio>
         </div>
     `;
-    
-    // Agregar evento para eliminar
-    const removeBtn = audioItem.querySelector('.btn-close');
-    removeBtn.addEventListener('click', () => clearCurrentAudio());
     
     DOM.queueList.appendChild(audioItem);
 }
@@ -744,6 +721,9 @@ function initializeEventListeners() {
     
     DOM.processAllBtn.addEventListener('click', processAudio); // Botón de procesar
     
+    // Botón de eliminar audio en el queue header
+    DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
+    
     // Modales de error
     DOM.closeModalBtn.addEventListener('click', closeErrorModal);
     DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
@@ -816,15 +796,9 @@ function displaySummary(result) {
     
     // Limpiar contenedor previo
     DOM.documentsViewer.innerHTML = '';
-    DOM.tabsHeader.innerHTML = '';
     
     AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
-    // Crear panel de resumen
-    const panel = document.createElement('div');
-    panel.className = 'document-panel active';
-    
-    const summary = result.summary; // Construir HTML del resumen
     const speechmaticsSummary = result.speechmatics_summary || null;
     
     // Resumen de Speechmatics
@@ -841,101 +815,67 @@ function displaySummary(result) {
         `;
     }
     
-    // Resumen inteligente de IA
-    /* let aiSummaryHTML = '';
-    if (aiSummary) {
-        aiSummaryHTML = `
-            <div class="summary-section ai-summary-section">
-                <h3>AI-Generated Summary (Gemini)</h3>
-                
-                ${aiSummary.resumen_ejecutivo ? `
-                    <div class="ai-executive-summary">
-                        <h4>Executive Summary</h4>
-                        <p>${aiSummary.resumen_ejecutivo}</p>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.temas_principales && aiSummary.temas_principales.length > 0 ? `
-                    <div class="ai-topics">
-                        <h4>Main Topics</h4>
-                        <ul>
-                            ${aiSummary.temas_principales.map(tema => `<li>${tema}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.decisiones_tomadas && aiSummary.decisiones_tomadas.length > 0 ? `
-                    <div class="ai-decisions">
-                        <h4>Decisions Made</h4>
-                        <ul>
-                            ${aiSummary.decisiones_tomadas.map(decision => `<li>${decision}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.tareas_asignadas && aiSummary.tareas_asignadas.length > 0 ? `
-                    <div class="ai-tasks">
-                        <h4>Assigned Tasks</h4>
-                        <ul>
-                            ${aiSummary.tareas_asignadas.map(tarea => `<li>${tarea}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                ${aiSummary.proximos_pasos && aiSummary.proximos_pasos.length > 0 ? `
-                    <div class="ai-next-steps">
-                        <h4>Next Steps</h4>
-                        <ul>
-                            ${aiSummary.proximos_pasos.map(paso => `<li>${paso}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    } */
-    
-    panel.innerHTML = `
-        <div class="summary-container">
-            ${speechmaticsSummaryHTML}
-            
-            <div class="summary-section">
-                <div class="transcription-toggle">
-                    <button class="transcription-toggle-btn" id="toggleTranscription">
-                        <svg class="toggle-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>Show Full Transcription</span>
-                    </button>
+    // Crear estructura de pestañas
+    const tabsContainer = document.createElement('div');
+    tabsContainer.className = 'content-tabs';
+    tabsContainer.innerHTML = `
+        <div class="tabs-navigation">
+            <button class="tab-btn active" data-tab="summary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Summary
+            </button>
+            <button class="tab-btn" data-tab="transcription">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12h6M9 16h6M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Transcription
+            </button>
+        </div>
+        <div class="tabs-content">
+            <div class="tab-panel active" id="summaryTab">
+                <div class="summary-container">
+                    ${speechmaticsSummaryHTML}
                 </div>
-                <div class="transcription-text hidden" id="transcriptionContent">
-                    ${formatTranscriptionWithSpeakers(result)}
+            </div>
+            <div class="tab-panel" id="transcriptionTab">
+                <div class="transcription-container">
+                    <div class="transcription-text">
+                        ${formatTranscriptionWithSpeakers(result)}
+                    </div>
                 </div>
             </div>
         </div>
     `;
     
-    DOM.documentsViewer.appendChild(panel);
+    DOM.documentsViewer.appendChild(tabsContainer);
     
-    // Agregar event listener para el toggle de transcripción
-    const toggleBtn = document.getElementById('toggleTranscription');
-    const transcriptionContent = document.getElementById('transcriptionContent');
+    // Agregar event listeners para las pestañas
+    const tabButtons = tabsContainer.querySelectorAll('.tab-btn');
+    const tabPanels = tabsContainer.querySelectorAll('.tab-panel');
     
-    if (toggleBtn && transcriptionContent) {
-        toggleBtn.addEventListener('click', () => {
-            transcriptionContent.classList.toggle('hidden');
-            const isHidden = transcriptionContent.classList.contains('hidden');
-            const icon = toggleBtn.querySelector('.toggle-icon');
-            const text = toggleBtn.querySelector('span');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
             
-            if (isHidden) {
-                icon.style.transform = 'rotate(0deg)';
-                text.textContent = 'Show Full Transcription';
-            } else {
-                icon.style.transform = 'rotate(180deg)';
-                text.textContent = 'Hide Full Transcription';
+            // Remover clase active de todos los botones y paneles
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabPanels.forEach(panel => panel.classList.remove('active'));
+            
+            // Agregar clase active al botón clickeado
+            button.classList.add('active');
+            
+            // Mostrar el panel correspondiente
+            const targetPanel = targetTab === 'summary' ? 
+                document.getElementById('summaryTab') : 
+                document.getElementById('transcriptionTab');
+            
+            if (targetPanel) {
+                targetPanel.classList.add('active');
             }
         });
-    }
+    });
 }
 
 /* Detecta si el mensaje del usuario es una instrucción de edición del resumen */
