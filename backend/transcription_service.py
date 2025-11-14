@@ -32,6 +32,7 @@ def transcribir_audio_service(archivo_audio, api_key, idioma, enable_summarizati
     )
     
     # Configuración de la transcripción
+    # Documentación diarization: https://docs.speechmatics.com/features/speaker-diarization
     config = {
         "type": "transcription",
         "transcription_config": {
@@ -136,15 +137,18 @@ def procesar_transcripcion_para_texto(resultado):
     
     for resultado_item in resultados:
         if resultado_item['type'] == 'word':
+            # El speaker está dentro de alternatives[0] en el formato json-v2
+            alternative = resultado_item.get('alternatives', [{}])[0]
+            
             # Cambio de hablante
-            if 'speaker' in resultado_item:
-                hablante = resultado_item['speaker']
+            if 'speaker' in alternative:
+                hablante = alternative['speaker']
                 if hablante != hablante_actual:
                     hablante_actual = hablante
                     texto_completo += f"\n\n[SPEAKER_{hablante}]"
             
             # Añadir palabra
-            texto_completo += resultado_item['alternatives'][0]['content']
+            texto_completo += alternative.get('content', '')
             
             # Añadir espacio si es necesario
             if resultado_item.get('is_eos', False):
@@ -178,9 +182,13 @@ def procesar_transcripcion_estructurada(resultado):
     
     for resultado_item in resultados:
         if resultado_item['type'] == 'word':
+            # El speaker está dentro de alternatives[0] en el formato json-v2
+            alternative = resultado_item.get('alternatives', [{}])[0]
+            
             # Cambio de hablante
-            if 'speaker' in resultado_item:
-                hablante = resultado_item['speaker']
+            if 'speaker' in alternative:
+                hablante = alternative['speaker']
+                
                 if hablante != hablante_actual:
                     # Guardar el diálogo anterior si existe
                     if hablante_actual is not None and texto_actual.strip():
@@ -194,7 +202,7 @@ def procesar_transcripcion_estructurada(resultado):
                     texto_actual = ""
             
             # Añadir palabra
-            texto_actual += resultado_item['alternatives'][0]['content']
+            texto_actual += alternative.get('content', '')
             
             # Añadir espacio si es necesario
             if resultado_item.get('is_eos', False):

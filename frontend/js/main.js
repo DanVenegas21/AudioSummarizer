@@ -752,31 +752,17 @@ function formatTranscriptionWithSpeakers(result) {
         return result.transcription ? result.transcription.replace(/\n/g, '<br>') : 'No transcription available';
     }
     
-    // Colores para diferentes hablantes
-    const speakerColors = [
-        '#3B82F6', // Azul
-        '#10B981', // Verde
-        '#F59E0B', // Naranja
-        '#EF4444', // Rojo
-        '#8B5CF6', // Púrpura
-        '#EC4899', // Rosa
-        '#14B8A6', // Turquesa
-        '#F97316', // Naranja oscuro
-    ];
+    // Color uniforme para todos los hablantes (mismo que speechmatics-summary-content)
+    const borderColor = '#08324A';
     
     let html = '<div class="dialogues-container">';
     
     result.dialogues.forEach((dialogue, index) => {
         const speakerId = dialogue.speaker;
-        const colorIndex = (speakerId.charCodeAt(0) - 65) % speakerColors.length; // A=0, B=1, etc.
-        const color = speakerColors[colorIndex];
         
         html += `
             <div class="dialogue-block" data-speaker="${speakerId}">
-                <div class="speaker-label" style="background-color: ${color}20; border-left: 4px solid ${color};">
-                    <span class="speaker-name" style="color: ${color};">Speaker ${speakerId}</span>
-                </div>
-                <div class="speaker-text">
+                <div class="speaker-text" style="border-left: 4px solid ${borderColor};">
                     ${dialogue.text}
                 </div>
             </div>

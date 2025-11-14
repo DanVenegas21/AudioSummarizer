@@ -29,7 +29,7 @@ from video_service import extraer_audio_de_video, es_archivo_video, verificar_es
 from system_Audio import esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
 
 # Configurar logging
-logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Silenciar logs de librerías externas y servicios
@@ -72,7 +72,14 @@ def generate_unique_filename(original_filename):
 # ENDPOINTS
 @app.route('/')
 def index():
-    """Endpoint raíz - información de la API"""
+    """Sirve la página de login del frontend"""
+    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
+    return send_from_directory(frontend_path, 'login.html')
+
+@app.route('/api')
+@app.route('/api/')
+def api_info():
+    """Endpoint con información de la API"""
     return jsonify({
         'name': 'Audio Summarizer API',
         'version': '1.0.0',
@@ -518,7 +525,13 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-    print(f"\nFrontend disponible en http://localhost:{port}/frontend\n")
+    print(f"\n{'='*60}")
+    print(f"  Audio Summarizer - Server Running")
+    print(f"{'='*60}")
+    print(f"  Frontend (Login):  http://localhost:{port}/")
+    print(f"  App Principal:     http://localhost:{port}/index.html")
+    print(f"  API Info:          http://localhost:{port}/api")
+    print(f"{'='*60}\n")
     
     app.run(
         host='0.0.0.0',
