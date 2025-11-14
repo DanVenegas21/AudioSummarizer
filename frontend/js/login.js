@@ -84,17 +84,11 @@ async function handleLogin(e) {
     const originalBtnContent = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" class="spinner-circle"></circle>
+        <svg class="btn-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
         </svg>
         Signing in...
     `;
-    
-    // Agregar animación de spinner
-    const spinnerCircle = submitBtn.querySelector('.spinner-circle');
-    if (spinnerCircle) {
-        spinnerCircle.style.animation = 'spin 1s linear infinite';
-    }
     
     try {
         // Aquí iría la llamada al API de autenticación
@@ -185,4 +179,3 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
-

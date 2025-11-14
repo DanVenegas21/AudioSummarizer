@@ -19,16 +19,14 @@ const DOM = {
     fileInput: document.getElementById('fileInput'),
     selectFileBtn: document.getElementById('selectFileBtn'),
     recordBtn: document.getElementById('recordBtn'),
-    documentsQueue: document.getElementById('documentsQueue'),
-    queueList: document.getElementById('queueList'),
-    processAllBtn: document.getElementById('processAllBtn'),
+    audioPreview: document.getElementById('audioPreview'),
+    previewContainer: document.getElementById('previewContainer'),
+    processBtn: document.getElementById('processBtn'),
     languageSelect: document.getElementById('languageSelect'),
     removeAudioBtn: document.getElementById('removeAudioBtn'),
     
     // Preview Section
-    documentsViewer: document.getElementById('documentsViewer'),
-    documentsTabs: document.getElementById('documentsTabs'),
-    tabsHeader: document.getElementById('tabsHeader'),
+    summaryViewer: document.getElementById('summaryViewer'),
     summaryPlaceholder: document.getElementById('summaryPlaceholder'),
     
     // Modals
@@ -47,6 +45,16 @@ const DOM = {
 };
 
 /* UTILIDADES */
+/* Genera HTML de spinner con texto */
+function createSpinnerHTML(text) {
+    return `
+        <svg class="btn-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+        ${text}
+    `;
+}
+
 /* Formatea el tamaño del archivo en formato legible */
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -160,20 +168,20 @@ async function handleAudioFile(file) {
     // Obtener duración del audio
     const duration = await getAudioDuration(file);
     
-    // Mostrar el archivo en la cola
-    displayAudioInQueue(file, duration);
+    // Mostrar el archivo en preview
+    displayAudioPreview(file, duration);
     
-    // Mostrar la sección de cola
-    DOM.documentsQueue.classList.remove('hidden');
+    // Mostrar la sección de preview
+    DOM.audioPreview.classList.remove('hidden');
 }
 
-/* Muestra el archivo de audio en la cola */
-function displayAudioInQueue(file, duration) {
-    DOM.queueList.innerHTML = ''; // Limpiar la lista
+/* Muestra el archivo de audio en preview */
+function displayAudioPreview(file, duration) {
+    DOM.previewContainer.innerHTML = '';
     
     // Crear elemento de audio simplificado
     const audioItem = document.createElement('div');
-    audioItem.className = 'audio-queue-wrapper';
+    audioItem.className = 'audio-preview-wrapper';
     audioItem.innerHTML = `
         <div class="audio-player-container">
             <audio controls class="audio-player">
@@ -183,7 +191,7 @@ function displayAudioInQueue(file, duration) {
         </div>
     `;
     
-    DOM.queueList.appendChild(audioItem);
+    DOM.previewContainer.appendChild(audioItem);
 }
 
 /* Limpia el audio actual */
@@ -197,8 +205,8 @@ function clearCurrentAudio() {
     AppState.currentAudioFile = null; // Limpiar estado
     
     // Limpiar UI
-    DOM.queueList.innerHTML = '';
-    DOM.documentsQueue.classList.add('hidden');
+    DOM.previewContainer.innerHTML = '';
+    DOM.audioPreview.classList.add('hidden');
     
     DOM.fileInput.value = ''; // Reset input
 }
@@ -332,8 +340,8 @@ async function stopRecording() {
         AppState.currentAudioFile = audioFile;
         AppState.audioURL = URL.createObjectURL(audioFile);
 
-        displayAudioInQueue(audioFile, duration); // Mostrar el archivo en la cola
-        DOM.documentsQueue.classList.remove('hidden'); // Mostrar la sección de cola
+        displayAudioPreview(audioFile, duration); // Mostrar el archivo en preview
+        DOM.audioPreview.classList.remove('hidden'); // Mostrar la sección de preview
 
         // Restaurar UI del botón
         restoreRecordButton();
@@ -502,9 +510,9 @@ async function stopSystemRecording() {
 
         const duration = recordData.duration || (Date.now() - AppState.systemRecordingStartTime) / 1000;
 
-        displayAudioInQueue(audioFile, duration);
+        displayAudioPreview(audioFile, duration);
 
-        DOM.documentsQueue.classList.remove('hidden');
+        DOM.audioPreview.classList.remove('hidden');
 
         // Restaurar UI del botón
         restoreSystemRecordButton();
@@ -581,13 +589,8 @@ async function processAudio() {
     }
     
     AppState.isProcessing = true;
-    DOM.processAllBtn.disabled = true;
-    DOM.processAllBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-        </svg>
-        Processing...
-    `;
+    DOM.processBtn.disabled = true;
+    DOM.processBtn.innerHTML = createSpinnerHTML('Processing...');
     
     try {
         // Subir el archivo
@@ -617,12 +620,7 @@ async function processAudio() {
             language: selectedLanguage
         };
         
-        DOM.processAllBtn.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-            </svg>
-            Transcribing... (this may take a few minutes)
-        `;
+        DOM.processBtn.innerHTML = createSpinnerHTML('Transcribing...');
         
         const processResponse = await fetch('http://localhost:5000/api/process', {
             method: 'POST',
@@ -652,12 +650,12 @@ async function processAudio() {
         showError('Error: ' + error.message);
     } finally {
         AppState.isProcessing = false;
-        DOM.processAllBtn.disabled = false;
-        DOM.processAllBtn.innerHTML = `
+        DOM.processBtn.disabled = false;
+        DOM.processBtn.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
-            Generate Summary
+            Summarize
         `;
     }
 }
@@ -719,9 +717,9 @@ function initializeEventListeners() {
         }
     });
     
-    DOM.processAllBtn.addEventListener('click', processAudio); // Botón de procesar
+    DOM.processBtn.addEventListener('click', processAudio); // Botón de procesar
     
-    // Botón de eliminar audio en el queue header
+    // Botón de eliminar audio
     DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
     
     // Modales de error
@@ -781,7 +779,7 @@ function displaySummary(result) {
     }
     
     // Limpiar contenedor previo
-    DOM.documentsViewer.innerHTML = '';
+    DOM.summaryViewer.innerHTML = '';
     
     AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
@@ -793,7 +791,6 @@ function displaySummary(result) {
         const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
         speechmaticsSummaryHTML = `
             <div class="summary-section speechmatics-summary-section">
-                <h3>Meeting Summary</h3>
                 <div class="speechmatics-summary-content">
                     ${content}
                 </div>
@@ -835,7 +832,7 @@ function displaySummary(result) {
         </div>
     `;
     
-    DOM.documentsViewer.appendChild(tabsContainer);
+    DOM.summaryViewer.appendChild(tabsContainer);
     
     // Agregar event listeners para las pestañas
     const tabButtons = tabsContainer.querySelectorAll('.tab-btn');
@@ -959,12 +956,7 @@ async function handleChatMessage() {
     DOM.chatInput.disabled = true;
     DOM.sendChatBtn.disabled = true;
     const originalBtnText = DOM.sendChatBtn.innerHTML;
-    DOM.sendChatBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"></circle>
-        </svg>
-        ${isEdit ? 'Editing...' : 'Thinking...'}
-    `;
+    DOM.sendChatBtn.innerHTML = createSpinnerHTML(isEdit ? 'Editing...' : 'Thinking...');
     
     // Crear elemento de mensaje del usuario
     const userMessage = createChatMessage(message, 'user');

@@ -26,7 +26,7 @@
     <!-- SECCIÓN PRINCIPAL: LAYOUT DE 3 COLUMNAS -->
     <section class="main-workspace">
         <div class="workspace-container">
-            <!-- COLUMNA IZQUIERDA: Upload y Queue -->
+            <!-- COLUMNA IZQUIERDA: Upload y Preview -->
             <div class="column-left">
                 <div class="upload-panel">
                     <div class="panel-header">
@@ -57,13 +57,13 @@
                     </div>
                     
                     <!-- Audio cargado -->
-                    <div class="documents-queue hidden" id="documentsQueue">
-                        <div class="queue-header">
+                    <div class="audio-preview hidden" id="audioPreview">
+                        <div class="preview-header">
                             <h3>Audio File Ready to Process</h3>
                             <button class="btn-close" id="removeAudioBtn" title="Remove audio file">&times;</button>
                         </div>
-                        <div class="queue-list" id="queueList">
-                            <!-- El audio se agregará dinámicamente aquí -->
+                        <div class="preview-container" id="previewContainer">
+                            <!-- El audio se mostrará dinámicamente aquí -->
                         </div>
                         
                         <!-- Selector de idioma -->
@@ -81,11 +81,11 @@
                             </select>
                         </div>
                         
-                        <button class="btn btn-primary btn-large btn-full-width" id="processAllBtn">
+                        <button class="btn btn-primary btn-large btn-full-width" id="processBtn">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                                 <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
-                            Generate Summary
+                            Summarize
                         </button>
                     </div>
                     </div>
@@ -101,7 +101,7 @@
                     </div>
                     
                     <!-- Contenedor de resúmenes con pestañas -->
-                    <div class="documents-viewer" id="documentsViewer">
+                    <div class="summary-viewer" id="summaryViewer">
                         <!-- Placeholder inicial -->
                         <div class="summary-placeholder" id="summaryPlaceholder">
                             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -152,6 +152,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
+            <p>&copy; 2025 The Law Offices of Manuel Solis. All rights reserved.</p>
         </div>
     </footer>
 
