@@ -1,4 +1,167 @@
 /* AUDIO SUMMARIZER - MAIN SCRIPT */
+
+// Verificar autenticación al cargar la página
+function checkAuthentication() {
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    const user = localStorage.getItem('user');
+    
+    if (!isAuthenticated || !user) {
+        // Redirigir al login si no está autenticado
+        window.location.href = './login.html';
+        return false;
+    }
+    
+    try {
+        const userData = JSON.parse(user);
+        console.log('Usuario autenticado:', userData.email);
+        
+        // Mostrar información del usuario en la interfaz si es necesario
+        displayUserInfo(userData);
+        
+        return true;
+    } catch (error) {
+        console.error('Error al verificar autenticación:', error);
+        localStorage.clear();
+        window.location.href = './login.html';
+        return false;
+    }
+}
+
+// Mostrar información del usuario en la interfaz
+function displayUserInfo(user) {
+    // Mostrar el nombre del usuario en el header
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement) {
+        userNameElement.textContent = `${user.first_name} ${user.last_name}`;
+    }
+    console.log(`Bienvenido, ${user.first_name} ${user.last_name}`);
+}
+
+// Función para cerrar sesión
+function logout() {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
+    window.location.href = './login.html';
+}
+
+// Toggle del menú de usuario
+function toggleUserMenu(e) {
+    e.stopPropagation();
+    DOM.userDropdown.classList.toggle('hidden');
+}
+
+// Cerrar menú de usuario
+function closeUserMenu() {
+    DOM.userDropdown.classList.add('hidden');
+}
+
+// Abrir modal de cambio de contraseña
+function openChangePasswordModal() {
+    closeUserMenu();
+    DOM.changePasswordModal.classList.remove('hidden');
+    DOM.changePasswordForm.reset();
+}
+
+// Cerrar modal de cambio de contraseña
+function closeChangePasswordModal() {
+    DOM.changePasswordModal.classList.add('hidden');
+    DOM.changePasswordForm.reset();
+}
+
+// Manejar cambio de contraseña
+async function handleChangePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Validaciones
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showError('Please fill in all fields');
+        return;
+    }
+    
+    if (newPassword.length < 4) {
+        showError('New password must be at least 4 characters long');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showError('New passwords do not match');
+        return;
+    }
+    
+    // Obtener el usuario actual
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
+        showError('User not found');
+        return;
+    }
+    
+    // Deshabilitar el botón durante el proceso
+    const submitBtn = DOM.submitChangePasswordBtn;
+    const originalBtnContent = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+        <svg class="btn-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+        Changing...
+    `;
+    
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: user.email,
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to change password');
+        }
+        
+        // Cerrar el modal y mostrar mensaje de éxito
+        closeChangePasswordModal();
+        showSuccessMessage('Password changed successfully');
+        
+    } catch (error) {
+        console.error('Change password error:', error);
+        
+        // Mostrar mensaje de error específico
+        if (error.message.includes('Current password is incorrect')) {
+            showError('Current password is incorrect');
+        } else if (error.message.includes('at least 4 characters')) {
+            showError('New password must be at least 4 characters long');
+        } else {
+            showError('An error occurred while changing password');
+        }
+        
+        // Restaurar el botón
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnContent;
+    }
+}
+
+// Función para mostrar mensaje de éxito
+function showSuccessMessage(message) {
+    // Reutilizar el modal de error para mensajes de éxito
+    DOM.errorMessage.textContent = message;
+    DOM.errorModal.querySelector('h3').textContent = 'Success';
+    DOM.errorModal.classList.remove('hidden');
+    
+    // Restaurar el título después de cerrar
+    setTimeout(() => {
+        DOM.errorModal.querySelector('h3').textContent = 'Error';
+    }, 3000);
+}
+
 // Estado global de la aplicación
 const AppState = {
     currentAudioFile: null,
@@ -36,6 +199,17 @@ const DOM = {
     closeErrorBtn: document.getElementById('closeErrorBtn'),
     recordTypeModal: document.getElementById('recordTypeModal'),
     closeRecordTypeModalBtn: document.getElementById('closeRecordTypeModalBtn'),
+    
+    // User Menu
+    btnUserMenu: document.getElementById('btnUserMenu'),
+    userDropdown: document.getElementById('userDropdown'),
+    btnChangePassword: document.getElementById('btnChangePassword'),
+    btnLogout: document.getElementById('btnLogout'),
+    changePasswordModal: document.getElementById('changePasswordModal'),
+    closeChangePasswordModalBtn: document.getElementById('closeChangePasswordModalBtn'),
+    cancelChangePasswordBtn: document.getElementById('cancelChangePasswordBtn'),
+    submitChangePasswordBtn: document.getElementById('submitChangePasswordBtn'),
+    changePasswordForm: document.getElementById('changePasswordForm'),
     
     // Chat
     chatFooterStatic: document.getElementById('chatFooterStatic'),
@@ -741,6 +915,32 @@ function initializeEventListeners() {
             handleChatMessage();
         }
     });
+    
+    // User Menu
+    DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
+    DOM.btnLogout.addEventListener('click', logout);
+    DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    
+    // Change Password Modal
+    DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
+    DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    
+    // Cerrar modal al hacer click fuera
+    DOM.changePasswordModal.addEventListener('click', (e) => {
+        if (e.target === DOM.changePasswordModal) {
+            closeChangePasswordModal();
+        }
+    });
+    
+    // Cerrar el menú de usuario al hacer click fuera
+    document.addEventListener('click', (e) => {
+        if (!DOM.userDropdown.classList.contains('hidden')) {
+            if (!e.target.closest('.user-menu-section')) {
+                closeUserMenu();
+            }
+        }
+    });
 }
 
 /* Formatea la transcripción con identificación visual de hablantes */
@@ -1155,6 +1355,11 @@ function processInlineMarkdown(text) {
 /* Inicializa la aplicación */
 function initApp() {
     console.log('Audio Summarizer initialized');
+    
+    // Verificar autenticación primero
+    if (!checkAuthentication()) {
+        return; // Si no está autenticado, se redirige al login
+    }
     
     // Inicializar event listeners
     initializeEventListeners();
