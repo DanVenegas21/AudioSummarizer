@@ -27,6 +27,8 @@ from transcription_service import transcribir_audio_service, procesar_transcripc
 from summary_service import generar_resumen_completo, chat_con_gemini, editar_resumen_con_gemini
 from video_service import extraer_audio_de_video, es_archivo_video, verificar_es_video_real
 from system_Audio import esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
+from auth_service import authenticate_user, get_user_by_id, change_password
+from database import test_connection
 
 # Configurar logging
 logging.basicConfig(level=logging.WARNING)
@@ -86,7 +88,8 @@ def api_info():
         'endpoints': {
             'upload': '/api/upload',
             'process': '/api/process',
-            'health': '/api/health'
+            'health': '/api/health',
+            'login': '/api/login'
         }
     })
 
@@ -97,8 +100,106 @@ def health_check():
         'status': 'healthy',
         'message': 'Server is running',
         'system_audio_available': esta_disponible_grabacion_sistema(),
-        'system_audio_recording': esta_grabando_sistema()
+        'system_audio_recording': esta_grabando_sistema(),
+        'database_connected': test_connection()
     })
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    """
+    Endpoint para autenticar usuarios
+    
+    Espera:
+        - email: Email del usuario
+        - password: Contraseña del usuario
+    
+    Retorna:
+        - user: Información del usuario autenticado
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'password' not in data:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        email = data['email'].strip()
+        password = data['password']
+        
+        # Validar que no estén vacíos
+        if not email or not password:
+            return jsonify({'error': 'Email and password cannot be empty'}), 400
+        
+        # Autenticar usuario
+        user = authenticate_user(email, password)
+        
+        if user is None:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid credentials'
+            }), 401
+        
+        # Convertir el objeto datetime a string para JSON
+        if 'created_at' in user and user['created_at']:
+            user['created_at'] = user['created_at'].isoformat()
+        
+        return jsonify({
+            'success': True,
+            'user': user
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error en login: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error during login: {str(e)}'}), 500
+
+@app.route('/api/change-password', methods=['POST'])
+def change_user_password():
+    """
+    Endpoint para cambiar la contraseña del usuario
+    
+    Espera:
+        - email: Email del usuario
+        - current_password: Contraseña actual
+        - new_password: Nueva contraseña
+    
+    Retorna:
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'current_password' not in data or 'new_password' not in data:
+            return jsonify({'error': 'Email, current password and new password are required'}), 400
+        
+        email = data['email'].strip()
+        current_password = data['current_password']
+        new_password = data['new_password']
+        
+        # Validar que no estén vacíos
+        if not email or not current_password or not new_password:
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        # Validar longitud de la nueva contraseña
+        if len(new_password) < 4:
+            return jsonify({'error': 'New password must be at least 4 characters long'}), 400
+        
+        # Cambiar contraseña
+        success = change_password(email, current_password, new_password)
+        
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': 'Current password is incorrect'
+            }), 401
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al cambiar contraseña: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error changing password: {str(e)}'}), 500
 
 @app.route('/api/start-system-recording', methods=['POST'])
 def start_system_recording():
