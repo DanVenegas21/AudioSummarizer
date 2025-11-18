@@ -91,23 +91,44 @@ async function handleLogin(e) {
     `;
     
     try {
-        // Aquí iría la llamada al API de autenticación
-        // Por ahora, simulamos una petición con un timeout
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Llamar al API de autenticación
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
         
-        // Ejemplo de validación (esto debe hacerse en el backend)
-        // IMPORTANTE: Este es solo un ejemplo para demostración
-        // En producción, la autenticación debe hacerse en el servidor
+        const data = await response.json();
         
-        // Simulación de login exitoso
-        console.log('Login attempt:', { email });
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Authentication failed');
+        }
+        
+        // Guardar información del usuario en localStorage
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('isAuthenticated', 'true');
+        
+        console.log('Login successful:', data.user.email);
         
         // Redirigir a la página principal
         window.location.href = './index.html';
         
     } catch (error) {
         console.error('Login error:', error);
-        showError('An error occurred during login. Please try again.');
+        
+        // Mostrar mensaje de error específico
+        if (error.message.includes('Invalid credentials')) {
+            showError('Invalid email or password. Please try again.');
+        } else if (error.message.includes('required')) {
+            showError('Please fill in all required fields.');
+        } else {
+            showError('An error occurred during login. Please try again.');
+        }
         
         // Restaurar el botón
         submitBtn.disabled = false;
