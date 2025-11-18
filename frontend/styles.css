@@ -72,7 +72,7 @@ body {
     margin: 0 auto;
     padding: 0 var(--spacing-md);
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -98,6 +98,103 @@ body {
     line-height: 1.6;
     opacity: 0.95;
     max-width: 800px;
+}
+
+/* User Menu */
+.user-menu-section {
+    position: relative;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: white;
+    opacity: 0.95;
+}
+
+.btn-user-menu {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-secondary);
+    color: var(--primary-color);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+.btn-user-menu:hover {
+    background-color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-user-menu:active {
+    transform: translateY(0);
+}
+
+.btn-user-menu svg {
+    width: 24px;
+    height: 24px;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    min-width: 200px;
+    padding: 0.5rem 0;
+    z-index: 1000;
+}
+
+.user-dropdown.hidden {
+    display: none;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.dropdown-item svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-secondary);
 }
 
 /*SECCIÓN PRINCIPAL: LAYOUT DE 3 COLUMNAS*/
