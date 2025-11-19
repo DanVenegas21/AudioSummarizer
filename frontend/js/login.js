@@ -47,6 +47,11 @@ function isValidEmail(email) {
     return emailRegex.test(email);
 }
 
+/* Valida que el email tenga el dominio correcto */
+function isValidDomain(email) {
+    return email.toLowerCase().endsWith('@manuelsolis.com');
+}
+
 /* Valida el formulario antes de enviar */
 function validateForm(email, password) {
     if (!email || !password) {
@@ -56,6 +61,11 @@ function validateForm(email, password) {
     
     if (email.includes('@') && !isValidEmail(email)) {
         showError('Please enter a valid email address.');
+        return false;
+    }
+    
+    if (!isValidDomain(email)) {
+        showError('Only @manuelsolis.com email addresses are allowed.');
         return false;
     }
     
