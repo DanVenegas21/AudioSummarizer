@@ -3,188 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Meetings Summarizer</title>
+    <title>Login - Online Meetings Summarizer</title>
     <link rel="stylesheet" href="./styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <!-- SECCIÓN 1: ENCABEZADO -->
-    <header class="header">
-        <div class="header-container">
-            <div class="logo-section">
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
                 <div class="logo-placeholder">
                     <img width="76" height="81" src="https://bos.manuelsolis.com/images/logo.png" alt="Logo">
                 </div>
-                <div class="firm-info">
-                    <h1>The Law Offices of Manuel Solis</h1>
-                    <p>Online Meetings Summarizer</p>
-                </div>
+                <h1>The Law Offices of Manuel Solis</h1>
+                <p>Online Meetings Summarizer</p>
             </div>
-            <div class="user-menu-section">
-                <div class="user-info" id="userInfo">
-                    <span class="user-name" id="userName">User</span>
-                    <button class="btn-user-menu" id="btnUserMenu" title="User menu">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                    </button>
-                </div>
-                <div class="user-dropdown hidden" id="userDropdown">
-                    <button class="dropdown-item" id="btnChangePassword">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        Change Password
-                    </button>
-                    <button class="dropdown-item" id="btnLogout">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                            <polyline points="16 17 21 12 16 7"></polyline>
-                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        Logout
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
 
-    <!-- SECCIÓN PRINCIPAL: LAYOUT DE 3 COLUMNAS -->
-    <section class="main-workspace">
-        <div class="workspace-container">
-            <!-- COLUMNA IZQUIERDA: Upload y Preview -->
-            <div class="column-left">
-                <div class="upload-panel">
-                    <div class="panel-header">
-                        <h3>Upload or record your meeting</h3>
-                        <p>Summarize your meetings with AI</p>
-                    </div>
-                    
-                    <div class="upload-panel-content">
-                        <!-- Upload Box -->
-                        <div class="upload-box-new" id="uploadBox">
-                        <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm,.mp4,.avi,.mov,.mkv,.flv,.wmv,.mpeg,.mpg,.3gp,.m4v,.ts" hidden>
-                        <div class="upload-content-new">
-                            <p>Drag and drop an audio or video file here</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Botones de acción -->
-                    <div class="upload-buttons-wrapper">
-                        <button class="btn btn-record" id="recordBtn" title="Record Audio">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                <line x1="12" y1="19" x2="12" y2="23"/>
-                                <line x1="8" y1="23" x2="16" y2="23"/>
+            <div class="login-body">
+                <h2>Sign In</h2>
+                <p class="login-subtitle">Enter your credentials to access the platform</p>
+
+                <form class="login-form" id="loginForm">
+                    <div class="form-group">
+                        <label for="email" class="form-label">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
                             </svg>
-                        </button>
-                        <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
+                            <span>Email</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="email" 
+                            name="email" 
+                            class="form-input" 
+                            placeholder="user@manuelsolis.com"
+                            required
+                            autocomplete="username"
+                        >
                     </div>
-                    
-                    <!-- Audio cargado -->
-                    <div class="audio-preview hidden" id="audioPreview">
-                        <div class="preview-header">
-                            <h3>Audio File Ready to Process</h3>
-                            <button class="btn-close" id="removeAudioBtn" title="Remove audio file">&times;</button>
-                        </div>
-                        <div class="preview-container" id="previewContainer">
-                            <!-- El audio se mostrará dinámicamente aquí -->
-                        </div>
-                        
-                        <!-- Selector de idioma -->
-                        <div class="language-selector">
-                            <label for="languageSelect" class="language-label">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <span>Password</span>
+                        </label>
+                        <div class="password-input-wrapper">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password" 
+                                class="form-input" 
+                                placeholder="Enter your password"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button type="button" class="btn-toggle-password" id="togglePassword" title="Show password">
+                                <svg class="icon-hide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
                                 </svg>
-                                <span>Transcription Language:</span>
-                            </label>
-                            <select id="languageSelect" class="language-select">
-                                <option value="en" selected>English</option>
-                                <option value="es">Spanish (Español)</option>
-                            </select>
-                        </div>
-                        
-                        <button class="btn btn-primary btn-large btn-full-width" id="processBtn">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                            Summarize
-                        </button>
-                    </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- COLUMNA CENTRO: Summary y Transcripción -->
-            <div class="column-center">
-                <div class="summary-panel">
-                    <div class="panel-header">
-                        <h3>Summary & Transcription</h3>
-                        <p>AI-generated summary and full transcription</p>
-                    </div>
-                    
-                    <!-- Contenedor de resúmenes con pestañas -->
-                    <div class="summary-viewer" id="summaryViewer">
-                        <!-- Placeholder inicial -->
-                        <div class="summary-placeholder" id="summaryPlaceholder">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                            <p>Here the generated summary will be displayed</p>
-                            <span class="placeholder-hint">Upload and process an audio file to get started</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- COLUMNA DERECHA: Chat -->
-            <div class="column-right">
-                <div class="chat-panel">
-                    <div class="chat-header">
-                        <h3>Chat with Gemini</h3>
-                        <p>Ask questions about your audio summary</p>
-                    </div>
-                    
-                    <!-- Contenedor de mensajes del chat -->
-                    <div class="chat-messages-container" id="chatMessagesContainer">
-                        <!-- Los mensajes se agregarán dinámicamente aquí -->
-                    </div>
-                    
-                    <!-- Chat Footer (siempre visible pero deshabilitado inicialmente) -->
-                    <div class="chat-footer-container" id="chatFooterStatic">
-                        <div class="chat-input-container">
-                            <textarea 
-                                id="chatInput" 
-                                placeholder="Ask me anything about your audio summary..."
-                                rows="2"
-                                disabled
-                            ></textarea>
-                            <button class="btn btn-primary chat-send-btn" id="sendChatBtn" disabled>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 8L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <svg class="icon-show hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
                                 </svg>
-                                Send
                             </button>
                         </div>
                     </div>
-                </div>
+
+                    <div class="form-options">
+                        <a href="#" class="forgot-password">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large btn-full-width btn-login">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        Sign In
+                    </button>
+                </form>
+
+            <div class="login-footer">
+                <p>&copy; 2025 The Law Offices of Manuel Solis. All rights reserved.</p>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2025 The Law Offices of Manuel Solis. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <!-- Modal de Error -->
     <div class="modal hidden" id="errorModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -195,108 +103,11 @@
                 <p id="errorMessage">An error occurred</p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" id="closeErrorBtn">Cerrar</button>
+                <button class="btn btn-primary" id="closeErrorBtn">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Cambiar Contraseña -->
-    <div class="modal hidden" id="changePasswordModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Change Password</h3>
-                <button class="btn-close" id="closeChangePasswordModalBtn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="changePasswordForm">
-                    <div class="form-group">
-                        <label for="currentPassword" class="form-label">Current Password</label>
-                        <input 
-                            type="password" 
-                            id="currentPassword" 
-                            name="currentPassword" 
-                            class="form-input" 
-                            required
-                            autocomplete="current-password"
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword" class="form-label">New Password</label>
-                        <input 
-                            type="password" 
-                            id="newPassword" 
-                            name="newPassword" 
-                            class="form-input" 
-                            required
-                            autocomplete="new-password"
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                        <input 
-                            type="password" 
-                            id="confirmPassword" 
-                            name="confirmPassword" 
-                            class="form-input" 
-                            required
-                            autocomplete="new-password"
-                        >
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelChangePasswordBtn">Cancel</button>
-                <button class="btn btn-primary" id="submitChangePasswordBtn">Change Password</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Selección de Tipo de Grabación -->
-    <div class="modal hidden" id="recordTypeModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select Recording Type</h3>
-                <button class="btn-close" id="closeRecordTypeModalBtn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1.5rem; color: #6b7280;">Choose what audio source you want to record:</p>
-                <div class="record-type-options">
-                    <button class="record-type-option" data-type="microphone">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="23"/>
-                            <line x1="8" y1="23" x2="16" y2="23"/>
-                        </svg>
-                        <h4>Microphone Only</h4>
-                        <p>Record from your microphone</p>
-                    </button>
-                    <button class="record-type-option" data-type="system">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18V5l12-2v13"></path>
-                            <circle cx="6" cy="18" r="3"></circle>
-                            <circle cx="18" cy="16" r="3"></circle>
-                        </svg>
-                        <h4>System Audio Only</h4>
-                        <p>Record what's playing on your computer</p>
-                    </button>
-                    <button class="record-type-option" data-type="both">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="9" cy="9" r="3"/>
-                            <path d="M9 12v3a3 3 0 0 0 6 0v-3"/>
-                            <path d="M15 9h6v6"/>
-                            <path d="M18 12l3-3"/>
-                        </svg>
-                        <h4>Microphone + System</h4>
-                        <p>Record both sources simultaneously</p>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="./js/recorder.js"></script>
-    <script src="./js/main.js"></script>
+    <script src="./js/login.js"></script>
 </body>
 </html>
