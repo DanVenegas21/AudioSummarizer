@@ -35,6 +35,11 @@ def authenticate_user(email, password):
         # Normalizar el email a minúsculas
         email = email.lower().strip()
         
+        # Validar que el email tenga el dominio correcto
+        if not email.endswith('@manuelsolis.com'):
+            logger.warning(f"Intento de login con dominio no autorizado: {email}")
+            return None
+        
         # Hashear la contraseña ingresada
         password_hash = hash_password(password)
         
@@ -135,6 +140,11 @@ def create_user(first_name, last_name, email, password, role=1):
         # Normalizar el email a minúsculas
         email = email.lower().strip()
         
+        # Validar que el email tenga el dominio correcto
+        if not email.endswith('@manuelsolis.com'):
+            logger.warning(f"Intento de crear usuario con dominio no autorizado: {email}")
+            return None
+        
         # Verificar si el usuario ya existe
         existing_user = get_user_by_email(email)
         if existing_user:
@@ -211,4 +221,3 @@ def change_password(email, current_password, new_password):
     except Exception as e:
         logger.error(f"Error al cambiar contraseña: {e}")
         return False
-
