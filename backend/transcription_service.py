@@ -218,4 +218,3 @@ def procesar_transcripcion_estructurada(resultado):
         })
     
     return dialogos
-

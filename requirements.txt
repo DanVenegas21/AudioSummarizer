@@ -12,6 +12,9 @@ python-dotenv==1.0.0
  
 # Google Gemini AI (para resúmenes y chat)
 google-generativeai==0.8.3
+
+# OpenAI API (para agentes personalizados)
+openai>=1.0.0
  
 # Procesamiento de video (para extraer audio)
 moviepy==2.2.1
@@ -20,3 +23,6 @@ moviepy==2.2.1
 soundcard==0.4.5
 soundfile==0.12.1
 numpy==2.1.2
+
+# Base de datos PostgreSQL (Supabase)
+#psycopg2-binary==2.9.9

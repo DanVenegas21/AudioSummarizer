@@ -1,6 +1,7 @@
--- Script SQL para crear la tabla users en Supabase
--- Ejecuta este script en el SQL Editor de Supabase si la tabla no existe
+-- Script SQL para crear las tablas en Supabase
+-- Ejecuta este script en el SQL Editor de Supabase si las tablas no existen
 
+-- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     first_name VARCHAR(255),
@@ -14,13 +15,35 @@ CREATE TABLE IF NOT EXISTS users (
 -- Crear índice en el email para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
--- Comentarios para documentación
-COMMENT ON TABLE users IS 'Tabla de usuarios del sistema';
-COMMENT ON COLUMN users.id IS 'ID único del usuario';
-COMMENT ON COLUMN users.first_name IS 'Nombre del usuario';
-COMMENT ON COLUMN users.last_name IS 'Apellido del usuario';
-COMMENT ON COLUMN users.email IS 'Email del usuario (único)';
-COMMENT ON COLUMN users.password IS 'Contraseña hasheada con SHA-256';
-COMMENT ON COLUMN users.role IS 'Rol del usuario (1=normal, 2=admin)';
-COMMENT ON COLUMN users.created_at IS 'Fecha de creación del usuario';
+-- Tabla de agentes personalizados
+CREATE TABLE IF NOT EXISTS agents (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    provider VARCHAR(50) NOT NULL CHECK (provider IN ('gemini', 'openai')),
+    prompt_template TEXT NOT NULL,
+    model_name VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
+-- Índices para búsquedas eficientes
+CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id);
+CREATE INDEX IF NOT EXISTS idx_agents_provider ON agents(provider);
+CREATE INDEX IF NOT EXISTS idx_agents_is_active ON agents(is_active);
+
+-- Trigger para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_agents_updated_at
+    BEFORE UPDATE ON agents
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
