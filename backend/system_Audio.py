@@ -10,10 +10,16 @@ import uuid
 import logging
 import threading
 import numpy as np
+import warnings
  
 logger = logging.getLogger(__name__)
+
+# Suprimir warnings específicos de soundcard sobre discontinuidad de datos
+warnings.filterwarnings('ignore', category=sc.SoundcardRuntimeWarning, 
+                       message='data discontinuity in recording')
  
 SAMPLE_RATE = 48000  # [Hz]. sampling rate.
+BLOCKSIZE = 2048  # Tamaño del buffer interno (mayor = más tolerante a interrupciones)
  
 # Estado global de grabación
 recording_state = {
@@ -56,7 +62,11 @@ def grabar_audio_sistema(duracion_segundos=30, output_dir='uploads'):
             return None
        
         # Grabar audio con loopback desde el altavoz predeterminado
-        with sc.get_microphone(id=str(default_speaker.name), include_loopback=True).recorder(samplerate=SAMPLE_RATE) as mic:
+        # Usar blocksize más grande para evitar discontinuidades
+        with sc.get_microphone(id=str(default_speaker.name), include_loopback=True).recorder(
+            samplerate=SAMPLE_RATE, 
+            blocksize=BLOCKSIZE
+        ) as mic:
             data = mic.record(numframes=SAMPLE_RATE * duracion_segundos)
            
             # Guardar como mono (canal único)
@@ -84,8 +94,11 @@ def _grabar_sistema_thread():
             recording_state['active'] = False
             return
        
-        # Grabar en chunks de 1 segundo
-        with sc.get_microphone(id=str(default_speaker.name), include_loopback=True).recorder(samplerate=SAMPLE_RATE) as mic:
+        # Grabar en chunks de 1 segundo con buffer más grande
+        with sc.get_microphone(id=str(default_speaker.name), include_loopback=True).recorder(
+            samplerate=SAMPLE_RATE,
+            blocksize=BLOCKSIZE
+        ) as mic:
             while recording_state['active']:
                 # Grabar 1 segundo de audio
                 chunk = mic.record(numframes=SAMPLE_RATE)
@@ -115,8 +128,8 @@ def _grabar_microfono_thread():
             logger.error("No se encontró un micrófono predeterminado")
             return
        
-        # Grabar en chunks de 1 segundo
-        with default_mic.recorder(samplerate=SAMPLE_RATE) as mic:
+        # Grabar en chunks de 1 segundo con buffer más grande
+        with default_mic.recorder(samplerate=SAMPLE_RATE, blocksize=BLOCKSIZE) as mic:
             while recording_state['active']:
                 # Grabar 1 segundo de audio
                 chunk = mic.record(numframes=SAMPLE_RATE)

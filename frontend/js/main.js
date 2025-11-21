@@ -34,212 +34,220 @@ function displayUserInfo(user) {
     if (userNameElement) {
         userNameElement.textContent = `${user.first_name} ${user.last_name}`;
     }
+    
+    // Poblar información del usuario en el sidebar
+    populateSidebarUserInfo(user);
+    
+    // Crear menú de navegación del sidebar
+    createSidebarNav(user);
+    
     console.log(`Bienvenido, ${user.first_name} ${user.last_name}`);
-    
-    // Renderizar Sidebar
-    renderSidebar(user);
 }
 
-/* SIDEBAR FUNCTIONS */
-function renderSidebar(user) {
-    const role = user.role !== undefined ? parseInt(user.role) : 2; // Default to User if undefined
-    
-    // 1. Render User Card
-    renderSidebarUserCard(user, role);
-    
-    // 2. Render Menu Items based on Role
-    renderSidebarMenu(role);
-}
-
-function renderSidebarUserCard(user, role) {
+// Poblar información del usuario en el sidebar
+function populateSidebarUserInfo(user) {
     if (!DOM.sidebarUserCard) return;
     
-    let roleName = 'User';
-    let badgeClass = 'badge-user';
+    const roleNames = {
+        0: { name: 'Admin', class: 'badge-admin' },
+        1: { name: 'Supervisor', class: 'badge-supervisor' },
+        2: { name: 'User', class: 'badge-user' }
+    };
     
-    if (role === 0) {
-        roleName = 'Admin';
-        badgeClass = 'badge-admin';
-    } else if (role === 1) {
-        roleName = 'Supervisor';
-        badgeClass = 'badge-supervisor';
-    }
+    const role = roleNames[user.role] || roleNames[2];
+    const initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
     
     DOM.sidebarUserCard.innerHTML = `
         <div class="sidebar-user-avatar">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
             </svg>
         </div>
-        <div class="sidebar-user-name">
-            ${user.first_name} ${user.last_name}
-        </div>
-        <div class="role-badge ${badgeClass}">
-            ${roleName}
-        </div>
+        <div class="sidebar-user-name">${user.first_name} ${user.last_name}</div>
+        <span class="role-badge ${role.class}">
+            ${role.name}
+        </span>
     `;
 }
 
-function renderSidebarMenu(role) {
+// Crear menú de navegación del sidebar
+function createSidebarNav(user) {
     if (!DOM.sidebarNav) return;
     
-    let menuHTML = '';
+    const menuItems = [];
     
-    // COMMON ITEMS (All roles usually have these, but priority varies)
-    const myRecordings = `<a href="#" class="nav-item">
-        <span class="nav-item-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-        </span>
-        My Recordings
-    </a>`;
+    // SECCIÓN PRINCIPAL - Común para todos los roles
     
-    const newRecording = `<a href="#" class="nav-item active" onclick="toggleSidebar()"> <!-- Current Page -->
-        <span class="nav-item-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-        </span>
-        New Recording
-    </a>`;
+    // My Recordings - Prioridad 1
+    menuItems.push({
+        icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>',
+        label: 'My Recordings',
+        active: false,
+        href: '#',
+        action: () => console.log('Navigate to My Recordings')
+    });
     
-    const myAccount = `<a href="#" class="nav-item">
-        <span class="nav-item-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-        </span>
-        My Account
-    </a>`;
+    // New Recording - Prioridad 1 (página actual)
+    menuItems.push({
+        icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>',
+        label: 'New Recording',
+        active: true,
+        href: './index.html',
+        action: () => window.location.href = './index.html'
+    });
     
-    // BUILD MENU BASED ON ROLE
-    
-    if (role === 2) { // USUARIO GENERAL
-        menuHTML += myRecordings;
-        menuHTML += newRecording;
+    // ADMIN (role = 0) - Acceso total
+    if (user.role === 0) {
+        // All Recordings
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
+            label: 'All Recordings',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to All Recordings')
+        });
         
-        menuHTML += `<div class="nav-group-title">Teams</div>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-            </span>
-            My Teams
-        </a>`;
-         // Sub-items could be dynamically loaded here
-        menuHTML += `<a href="#" class="nav-item nav-sub-item">
-             └─ Design Team
-        </a>`;
+        menuItems.push({ groupTitle: 'Administration' });
         
-        menuHTML += `<div class="nav-group-title">Account</div>`;
-        menuHTML += myAccount;
+        // Users
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            label: 'Users',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to Users')
+        });
         
-    } else if (role === 1) { // SUPERVISOR
-        menuHTML += myRecordings;
-        menuHTML += newRecording;
+        // Teams
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            label: 'Teams',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to Teams')
+        });
         
-        menuHTML += `<div class="nav-group-title">Team Management</div>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-            </span>
-            My Teams
-        </a>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"></path>
-                </svg>
-            </span>
-            Team Recordings
-        </a>`;
-        
-        menuHTML += `<div class="nav-group-title">Account</div>`;
-        menuHTML += myAccount;
-        
-    } else if (role === 0) { // ADMIN
-        menuHTML += myRecordings;
-        menuHTML += newRecording;
-        
-        menuHTML += `<div class="nav-group-title">Administration</div>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-            </span>
-            All Recordings
-        </a>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-            </span>
-            Users
-        </a>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                </svg>
-            </span>
-            Teams
-        </a>`;
-        menuHTML += `<a href="#" class="nav-item">
-            <span class="nav-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </span>
-            Settings
-        </a>`;
-        
-        menuHTML += `<div class="nav-group-title">Account</div>`;
-        menuHTML += myAccount;
+        // Settings
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m5.66-14.66l-4.24 4.24m0 6l-4.24 4.24M23 12h-6m-6 0H1m19.66 5.66l-4.24-4.24m0-6l-4.24-4.24"></path></svg>',
+            label: 'Settings',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to Settings')
+        });
     }
     
-    DOM.sidebarNav.innerHTML = menuHTML;
+    // SUPERVISOR (role = 1) - Gestión de equipos
+    else if (user.role === 1) {
+        menuItems.push({ groupTitle: 'Teams' });
+        
+        // My Teams
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            label: 'My Teams',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to My Teams')
+        });
+        
+        // Team Recordings
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
+            label: 'Team Recordings',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to Team Recordings')
+        });
+    }
+    
+    // USUARIO GENERAL (role = 2) - Acceso básico
+    else if (user.role === 2) {
+        menuItems.push({ groupTitle: 'Teams' });
+        
+        // My Teams
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            label: 'My Teams',
+            active: false,
+            href: '#',
+            action: () => console.log('Navigate to My Teams')
+        });
+    }
+    
+    // SECCIÓN MY ACCOUNT - Común para todos los roles
+    menuItems.push({ groupTitle: 'My Account' });
+    
+    menuItems.push({
+        icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
+        label: 'Change Password',
+        active: false,
+        href: '#',
+        action: openChangePasswordModal
+    });
+    
+    menuItems.push({
+        icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>',
+        label: 'Logout',
+        active: false,
+        href: '#',
+        action: logout
+    });
+    
+    // Generar HTML del menú
+    let navHTML = '';
+    menuItems.forEach(item => {
+        if (item.groupTitle) {
+            navHTML += `<div class="nav-group-title">${item.groupTitle}</div>`;
+        } else {
+            navHTML += `
+                <a href="${item.href || '#'}" class="nav-item ${item.active ? 'active' : ''}" data-action="${item.label}">
+                    <span class="nav-item-icon">${item.icon}</span>
+                    <span>${item.label}</span>
+                </a>
+            `;
+        }
+    });
+    
+    DOM.sidebarNav.innerHTML = navHTML;
+    
+    // Agregar event listeners a los items del menú
+    DOM.sidebarNav.querySelectorAll('.nav-item').forEach((item, index) => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const action = menuItems.filter(m => !m.groupTitle)[index].action;
+            if (action) action();
+            closeSidebar();
+        });
+    });
 }
 
+// Funciones para manejar el sidebar
 function toggleSidebar() {
-    if (!DOM.appSidebar || !DOM.sidebarOverlay) {
-        return;
+    if (DOM.sidebar && DOM.sidebarOverlay) {
+        DOM.sidebar.classList.toggle('open');
+        
+        if (DOM.sidebar.classList.contains('open')) {
+            DOM.sidebarOverlay.classList.remove('hidden');
+            setTimeout(() => {
+                DOM.sidebarOverlay.classList.add('visible');
+            }, 10);
+        } else {
+            DOM.sidebarOverlay.classList.remove('visible');
+            setTimeout(() => {
+                DOM.sidebarOverlay.classList.add('hidden');
+            }, 300);
+        }
     }
-    
-    const isOpen = DOM.appSidebar.classList.contains('open');
-    
-    if (isOpen) {
-        // Cerrar sidebar
-        DOM.appSidebar.classList.remove('open');
+}
+
+function closeSidebar() {
+    if (DOM.sidebar && DOM.sidebarOverlay) {
+        DOM.sidebar.classList.remove('open');
         DOM.sidebarOverlay.classList.remove('visible');
-        DOM.sidebarOverlay.classList.add('hidden');
-    } else {
-        // Abrir sidebar
-        DOM.appSidebar.classList.add('open');
-        DOM.sidebarOverlay.classList.remove('hidden');
-        DOM.sidebarOverlay.classList.add('visible');
+        setTimeout(() => {
+            DOM.sidebarOverlay.classList.add('hidden');
+        }, 300);
     }
 }
 
@@ -272,24 +280,6 @@ function openChangePasswordModal() {
 function closeChangePasswordModal() {
     DOM.changePasswordModal.classList.add('hidden');
     DOM.changePasswordForm.reset();
-    
-    // Resetear todos los campos de contraseña a tipo password (ocultar)
-    const passwordInputs = DOM.changePasswordModal.querySelectorAll('input[type="password"], input[type="text"]');
-    passwordInputs.forEach(input => {
-        if (input.id === 'currentPassword' || input.id === 'newPassword' || input.id === 'confirmPassword') {
-            input.type = 'password';
-        }
-    });
-    
-    // Resetear los iconos de toggle
-    const toggleButtons = DOM.changePasswordModal.querySelectorAll('.btn-toggle-password');
-    toggleButtons.forEach(button => {
-        const iconHide = button.querySelector('.icon-hide');
-        const iconShow = button.querySelector('.icon-show');
-        iconHide.classList.remove('hidden');
-        iconShow.classList.add('hidden');
-        button.title = 'Show password';
-    });
 }
 
 // Manejar cambio de contraseña
@@ -397,7 +387,6 @@ const AppState = {
     recordingStartTime: null,
     recordingTimer: null,
     recordingType: null, // 'microphone', 'system', 'both'
-    statusInterval: null // Intervalo para mensajes de carga
 };
 
 // Elementos del DOM
@@ -438,18 +427,18 @@ const DOM = {
     submitChangePasswordBtn: document.getElementById('submitChangePasswordBtn'),
     changePasswordForm: document.getElementById('changePasswordForm'),
     
-    // Sidebar
-    appSidebar: document.getElementById('appSidebar'),
-    sidebarOverlay: document.getElementById('sidebarOverlay'),
-    sidebarToggleBtn: document.getElementById('sidebarToggleBtn'),
-    sidebarNav: document.getElementById('sidebarNav'),
-    sidebarUserCard: document.getElementById('sidebarUserCard'),
-    
     // Chat
     chatFooterStatic: document.getElementById('chatFooterStatic'),
     chatInput: document.getElementById('chatInput'),
     sendChatBtn: document.getElementById('sendChatBtn'),
-    chatMessagesContainer: document.getElementById('chatMessagesContainer')
+    chatMessagesContainer: document.getElementById('chatMessagesContainer'),
+    
+    // Sidebar
+    sidebar: document.getElementById('appSidebar'),
+    sidebarOverlay: document.getElementById('sidebarOverlay'),
+    sidebarToggleBtn: document.getElementById('sidebarToggleBtn'),
+    sidebarUserCard: document.getElementById('sidebarUserCard'),
+    sidebarNav: document.getElementById('sidebarNav')
 };
 
 /* UTILIDADES */
@@ -461,6 +450,40 @@ function createSpinnerHTML(text) {
         </svg>
         ${text}
     `;
+}
+
+/* Skeleton Loader Functions */
+function showLoadingSkeleton(initialMessage = 'Preparing...') {
+    if (DOM.summaryPlaceholder) {
+        DOM.summaryPlaceholder.style.display = 'none';
+    }
+    if (DOM.loadingSkeleton) {
+        DOM.loadingSkeleton.style.display = 'flex';
+    }
+    if (DOM.loadingStatusText) {
+        DOM.loadingStatusText.textContent = initialMessage;
+    }
+}
+
+function updateLoadingMessage(message) {
+    if (DOM.loadingStatusText) {
+        // Fade out
+        DOM.loadingStatusText.style.opacity = '0';
+        DOM.loadingStatusText.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+            DOM.loadingStatusText.textContent = message;
+            // Fade in
+            DOM.loadingStatusText.style.opacity = '1';
+            DOM.loadingStatusText.style.transform = 'translateY(0)';
+        }, 300);
+    }
+}
+
+function hideLoadingSkeleton() {
+    if (DOM.loadingSkeleton) {
+        DOM.loadingSkeleton.style.display = 'none';
+    }
 }
 
 /* Formatea el tamaño del archivo en formato legible */
@@ -1000,6 +1023,9 @@ async function processAudio() {
     DOM.processBtn.disabled = true;
     DOM.processBtn.innerHTML = createSpinnerHTML('Processing...');
     
+    // Mostrar skeleton loader con mensaje inicial
+    showLoadingSkeleton('Uploading audio file...');
+    
     try {
         // Subir el archivo
         const formData = new FormData();
@@ -1020,6 +1046,9 @@ async function processAudio() {
         
         console.log('File uploaded successfully:', fileId);
         
+        // Cambiar mensaje: Transcribiendo
+        updateLoadingMessage('Transcribing audio...');
+        
         // Obtener el idioma seleccionado
         const selectedLanguage = DOM.languageSelect ? DOM.languageSelect.value : 'en';
         
@@ -1028,55 +1057,14 @@ async function processAudio() {
             language: selectedLanguage
         };
         
-        // Mostrar Skeleton Loader en lugar del spinner en botón
-        DOM.processBtn.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                 <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            Processing...
-        `;
+        // Simular progreso con mensajes cambiantes durante la transcripción
+        const messageTimeout1 = setTimeout(() => {
+            updateLoadingMessage('Analyzing dialogues...');
+        }, 15000);
         
-        // Limpiar cualquier contenido previo y mostrar solo el skeleton
-        DOM.summaryViewer.innerHTML = `
-            <div id="loadingSkeleton" class="skeleton-loader" style="display: flex;">
-                <div class="skeleton-line title"></div>
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line short"></div>
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line short"></div>
-                <div id="loadingStatusText" class="loading-status">Processing audio...</div>
-            </div>
-        `;
-        
-        // Actualizar referencias del DOM
-        DOM.loadingSkeleton = document.getElementById('loadingSkeleton');
-        DOM.loadingStatusText = document.getElementById('loadingStatusText');
-        
-        // Iniciar rotación de textos de estado
-        const statusMessages = [
-            "Analyzing audio...",
-            "Processing voices...",
-            "Transcribing dialogues...",
-            "Analyzing conversations...",
-            "Identifying speakers...",
-            "Extracting key points...",
-            "Identifying insights...",
-            "Structuring content...",
-            "Generating summary..."
-        ];
-        let msgIndex = 0;
-        if (DOM.loadingStatusText) DOM.loadingStatusText.textContent = statusMessages[0];
-        
-        // Guardar intervalo en AppState para poder limpiarlo globalmente si es necesario
-        if (AppState.statusInterval) clearInterval(AppState.statusInterval);
-        
-        AppState.statusInterval = setInterval(() => {
-            if (DOM.loadingStatusText && DOM.loadingSkeleton.style.display !== 'none') {
-                msgIndex = (msgIndex + 1) % statusMessages.length;
-                DOM.loadingStatusText.textContent = statusMessages[msgIndex];
-            }
-        }, 15000); 
+        const messageTimeout2 = setTimeout(() => {
+            updateLoadingMessage('Generating summary...');
+        }, 15000);
         
         const processResponse = await fetch('http://localhost:5000/api/process', {
             method: 'POST',
@@ -1086,21 +1074,28 @@ async function processAudio() {
             body: JSON.stringify(processData)
         });
         
-        if (AppState.statusInterval) {
-             clearInterval(AppState.statusInterval);
-             AppState.statusInterval = null;
-        }
+        // Limpiar timeouts si la respuesta llega antes
+        clearTimeout(messageTimeout1);
+        clearTimeout(messageTimeout2);
         
         if (!processResponse.ok) {
             const error = await processResponse.json();
             throw new Error(error.error || 'Failed to process audio');
         }
         
+        // Último mensaje antes de mostrar resultado
+        updateLoadingMessage('Finalizing summary...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const result = await processResponse.json();
         
         console.log('Processing completed:', result);
         
-        displaySummary(result); // Mostrar el resultado
+        // Ocultar skeleton loader
+        hideLoadingSkeleton();
+        
+        // Mostrar el resultado
+        displaySummary(result);
         
         // Habilitar el chat
         DOM.chatInput.disabled = false;
@@ -1108,32 +1103,17 @@ async function processAudio() {
         
     } catch (error) {
         console.error('Error processing audio:', error);
-        showError('Error: ' + error.message);
         
-        // En caso de error, mostrar placeholder
-        DOM.summaryViewer.innerHTML = `
-            <div class="summary-placeholder" id="summaryPlaceholder" style="display: flex;">
-                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <line x1="10" y1="9" x2="8" y2="9"></line>
-                </svg>
-                <h3>Ready to summarize</h3>
-                <p>Upload an audio file or start recording to generate insights.</p>
-                <span class="placeholder-hint">Your summary will appear here</span>
-            </div>
-        `;
+        // Ocultar skeleton loader en caso de error
+        hideLoadingSkeleton();
         
-        // Actualizar referencia del DOM
-        DOM.summaryPlaceholder = document.getElementById('summaryPlaceholder');
-        
-    } finally {
-        if (AppState.statusInterval) {
-             clearInterval(AppState.statusInterval);
-             AppState.statusInterval = null;
+        // Mostrar placeholder de nuevo
+        if (DOM.summaryPlaceholder) {
+            DOM.summaryPlaceholder.style.display = 'flex';
         }
+        
+        showError('Error: ' + error.message);
+    } finally {
         AppState.isProcessing = false;
         DOM.processBtn.disabled = false;
         DOM.processBtn.innerHTML = `
@@ -1148,23 +1128,26 @@ async function processAudio() {
 /* EVENT LISTENERS */
 /* Inicializa todos los event listeners */
 function initializeEventListeners() {
-    if (DOM.recordBtn) {
-        DOM.recordBtn.addEventListener('click', handleRecordButtonClick);
+    // Sidebar events
+    if (DOM.sidebarToggleBtn) {
+        DOM.sidebarToggleBtn.addEventListener('click', toggleSidebar);
     }
+    
+    if (DOM.sidebarOverlay) {
+        DOM.sidebarOverlay.addEventListener('click', closeSidebar);
+    }
+    
+    DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
     
     // Modal de selección de tipo de grabación
-    if (DOM.closeRecordTypeModalBtn) {
-        DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
-    }
+    DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
     
     // Cerrar modal al hacer click fuera
-    if (DOM.recordTypeModal) {
-        DOM.recordTypeModal.addEventListener('click', (e) => {
-            if (e.target === DOM.recordTypeModal) {
-                closeRecordTypeModal();
-            }
-        });
-    }
+    DOM.recordTypeModal.addEventListener('click', (e) => {
+        if (e.target === DOM.recordTypeModal) {
+            closeRecordTypeModal();
+        }
+    });
     
     // Manejar selección de tipo de grabación
     document.querySelectorAll('.record-type-option').forEach(button => {
@@ -1176,209 +1159,105 @@ function initializeEventListeners() {
     });
     
     // Click en el botón de seleccionar archivo
-    if (DOM.selectFileBtn && DOM.fileInput) {
-        DOM.selectFileBtn.addEventListener('click', () => {
-            DOM.fileInput.click();
-        });
-    }
+    DOM.selectFileBtn.addEventListener('click', () => {
+        DOM.fileInput.click();
+    });
     
     // Cambio en el input de archivo
-    if (DOM.fileInput) {
-        DOM.fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                handleAudioFile(file);
-            }
-        });
-    }
+    DOM.fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleAudioFile(file);
+        }
+    });
     
     // Drag and Drop en el upload box
-    if (DOM.uploadBox) {
-        DOM.uploadBox.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            DOM.uploadBox.classList.add('drag-over');
-        });
-        
-        DOM.uploadBox.addEventListener('dragleave', () => {
-            DOM.uploadBox.classList.remove('drag-over');
-        });
-        
-        DOM.uploadBox.addEventListener('drop', (e) => {
-            e.preventDefault();
-            DOM.uploadBox.classList.remove('drag-over');
-            
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleAudioFile(file);
-            }
-        });
-    }
+    DOM.uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        DOM.uploadBox.classList.add('drag-over');
+    });
     
-    if (DOM.processBtn) {
-        DOM.processBtn.addEventListener('click', processAudio);
-    }
+    DOM.uploadBox.addEventListener('dragleave', () => {
+        DOM.uploadBox.classList.remove('drag-over');
+    });
+    
+    DOM.uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        DOM.uploadBox.classList.remove('drag-over');
+        
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleAudioFile(file);
+        }
+    });
+    
+    DOM.processBtn.addEventListener('click', processAudio); // Botón de procesar
     
     // Botón de eliminar audio
-    if (DOM.removeAudioBtn) {
-        DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
-    }
+    DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
     
     // Modales de error
-    if (DOM.closeModalBtn) {
-        DOM.closeModalBtn.addEventListener('click', closeErrorModal);
-    }
-    
-    if (DOM.closeErrorBtn) {
-        DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
-    }
+    DOM.closeModalBtn.addEventListener('click', closeErrorModal);
+    DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
     
     // Click fuera del modal para cerrar
-    if (DOM.errorModal) {
-        DOM.errorModal.addEventListener('click', (e) => {
-            if (e.target === DOM.errorModal) {
-                closeErrorModal();
-            }
-        });
-    }
+    DOM.errorModal.addEventListener('click', (e) => {
+        if (e.target === DOM.errorModal) {
+            closeErrorModal();
+        }
+    });
     
-    if (DOM.sendChatBtn) {
-        DOM.sendChatBtn.addEventListener('click', handleChatMessage);
-    }
+    DOM.sendChatBtn.addEventListener('click', handleChatMessage); // Chat Footer Estático
     
-    if (DOM.chatInput) {
-        DOM.chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleChatMessage();
-            }
-        });
-    }
-    
-    // User Menu (verificar que existan los elementos)
-    if (DOM.btnUserMenu) {
-        DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
-    }
-    
-    if (DOM.btnLogout) {
-        DOM.btnLogout.addEventListener('click', logout);
-    }
-    
-    if (DOM.btnChangePassword) {
-        DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
-    }
-    
-    // Change Password Modal
-    if (DOM.closeChangePasswordModalBtn) {
-        DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
-    }
-    
-    if (DOM.cancelChangePasswordBtn) {
-        DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
-    }
-    
-    if (DOM.submitChangePasswordBtn) {
-        DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
-    }
-    
-    // Toggle password visibility en Change Password Modal
-    if (DOM.changePasswordModal) {
-        const passwordToggleButtons = DOM.changePasswordModal.querySelectorAll('.btn-toggle-password');
-        passwordToggleButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const targetId = this.getAttribute('data-target');
-                const passwordInput = document.getElementById(targetId);
-                const iconHide = this.querySelector('.icon-hide');
-                const iconShow = this.querySelector('.icon-show');
-                
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    iconHide.classList.add('hidden');
-                    iconShow.classList.remove('hidden');
-                    this.title = 'Hide password';
-                } else {
-                    passwordInput.type = 'password';
-                    iconHide.classList.remove('hidden');
-                    iconShow.classList.add('hidden');
-                    this.title = 'Show password';
-                }
-            });
-        });
-        
-        // Cerrar modal al hacer click fuera
-        DOM.changePasswordModal.addEventListener('click', (e) => {
-            if (e.target === DOM.changePasswordModal) {
-                closeChangePasswordModal();
-            }
-        });
-    }
-    
-    // Cerrar el menú de usuario al hacer click fuera
-    if (DOM.userDropdown) {
-        document.addEventListener('click', (e) => {
-            if (!DOM.userDropdown.classList.contains('hidden')) {
-                if (!e.target.closest('.user-menu-section')) {
-                    closeUserMenu();
-                }
-            }
-        });
-    }
-    
-    // Sidebar Toggles
-    if (DOM.sidebarToggleBtn) {
-        DOM.sidebarToggleBtn.addEventListener('click', (e) => {
+    DOM.chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            toggleSidebar();
-        });
-    }
-    
-    if (DOM.sidebarOverlay) {
-        DOM.sidebarOverlay.addEventListener('click', toggleSidebar);
-    }
-    
-    // Chat input Enter key
-    if (DOM.chatInput) {
-        DOM.chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleChatMessage();
-            }
-        });
-    }
+            handleChatMessage();
+        }
+    });
     
     // User Menu
-    if (DOM.btnUserMenu) {
-        DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
-    }
-    if (DOM.btnLogout) {
-        DOM.btnLogout.addEventListener('click', logout);
-    }
-    if (DOM.btnChangePassword) {
-        DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
-    }
+    DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
+    DOM.btnLogout.addEventListener('click', logout);
+    DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
     
     // Change Password Modal
-    if (DOM.closeChangePasswordModalBtn) {
-        DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
-    }
-    if (DOM.cancelChangePasswordBtn) {
-        DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
-    }
-    if (DOM.submitChangePasswordBtn) {
-        DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
-    }
+    DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
+    DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
     
     // Cerrar modal al hacer click fuera
-    if (DOM.changePasswordModal) {
-        DOM.changePasswordModal.addEventListener('click', (e) => {
-            if (e.target === DOM.changePasswordModal) {
-                closeChangePasswordModal();
+    DOM.changePasswordModal.addEventListener('click', (e) => {
+        if (e.target === DOM.changePasswordModal) {
+            closeChangePasswordModal();
+        }
+    });
+    
+    // Toggle de visibilidad de contraseñas en el modal de cambio de contraseña
+    document.querySelectorAll('.btn-toggle-password').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const iconHide = this.querySelector('.icon-hide');
+            const iconShow = this.querySelector('.icon-show');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconHide.classList.add('hidden');
+                iconShow.classList.remove('hidden');
+                this.title = 'Hide password';
+            } else {
+                input.type = 'password';
+                iconHide.classList.remove('hidden');
+                iconShow.classList.add('hidden');
+                this.title = 'Show password';
             }
         });
-    }
+    });
     
     // Cerrar el menú de usuario al hacer click fuera
     document.addEventListener('click', (e) => {
-        if (DOM.userDropdown && !DOM.userDropdown.classList.contains('hidden')) {
+        if (!DOM.userDropdown.classList.contains('hidden')) {
             if (!e.target.closest('.user-menu-section')) {
                 closeUserMenu();
             }
@@ -1416,53 +1295,16 @@ function formatTranscriptionWithSpeakers(result) {
 
 /* Muestra el resumen en la UI */
 function displaySummary(result) {
-    // Ocultar el placeholder y el skeleton
+    // Ocultar el skeleton loader si está visible
+    hideLoadingSkeleton();
+    
+    // Ocultar el placeholder
     if (DOM.summaryPlaceholder) {
         DOM.summaryPlaceholder.style.display = 'none';
     }
-    if (DOM.loadingSkeleton) {
-        DOM.loadingSkeleton.style.display = 'none';
-    }
     
-    // Limpiar contenedor previo (manteniendo skeleton y placeholder si están dentro, pero mejor recrear)
-    // Nota: summaryViewer contiene placeholder y skeleton. Si hacemos innerHTML = '', los borramos.
-    // Mejor estrategia: Ocultar hijos directos y añadir el nuevo contenido, o limpiar y re-agregar.
-    // Dado que createSummaryTabs crea toda la estructura, podemos limpiar.
-    // PERO debemos asegurarnos de que si limpiamos, perdemos las referencias a DOM.loadingSkeleton.
-    // Solución: Crear un contenedor específico para el contenido dinámico o volver a inyectar el skeleton si se limpia.
-    
-    // Limpiamos todo y manejamos la visibilidad con clases
+    // Limpiar contenedor previo
     DOM.summaryViewer.innerHTML = '';
-    
-    // Re-agregar placeholder y skeleton ocultos para uso futuro (reset)
-    DOM.summaryViewer.innerHTML = `
-        <div class="summary-placeholder" id="summaryPlaceholder" style="display: none;">
-             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <line x1="10" y1="9" x2="8" y2="9"></line>
-            </svg>
-            <h3>Ready to summarize</h3>
-            <p>Upload an audio file or start recording to generate insights.</p>
-            <span class="placeholder-hint">Your summary will appear here</span>
-        </div>
-        <div id="loadingSkeleton" class="skeleton-loader" style="display: none;">
-            <div class="skeleton-line title"></div>
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line short"></div>
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line short"></div>
-            <div id="loadingStatusText" class="loading-status">Transcribing audio...</div>
-        </div>
-    `;
-    
-    // Actualizar referencias del DOM
-    DOM.summaryPlaceholder = document.getElementById('summaryPlaceholder');
-    DOM.loadingSkeleton = document.getElementById('loadingSkeleton');
-    DOM.loadingStatusText = document.getElementById('loadingStatusText');
     
     AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
@@ -1844,13 +1686,6 @@ function initApp() {
         return; // Si no está autenticado, se redirige al login
     }
     
-    // Re-inicializar referencias DOM para asegurar que estén disponibles
-    DOM.appSidebar = document.getElementById('appSidebar');
-    DOM.sidebarOverlay = document.getElementById('sidebarOverlay');
-    DOM.sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
-    DOM.sidebarNav = document.getElementById('sidebarNav');
-    DOM.sidebarUserCard = document.getElementById('sidebarUserCard');
-    
     // Inicializar event listeners
     initializeEventListeners();
 }
@@ -1867,4 +1702,3 @@ window.AppState = AppState;
 window.handleAudioFile = handleAudioFile;
 window.processAudio = processAudio;
 window.clearCurrentAudio = clearCurrentAudio;
-window.toggleSidebar = toggleSidebar;
