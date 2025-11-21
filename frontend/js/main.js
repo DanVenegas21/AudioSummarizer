@@ -71,6 +71,94 @@ function populateSidebarUserInfo(user) {
     `;
 }
 
+// Cargar agentes disponibles para el usuario
+async function loadUserAgents() {
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) return;
+        
+        const response = await fetch(`http://localhost:5000/api/agents?user_id=${user.id}&only_active=true`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to load agents');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.agents) {
+            AppState.availableAgents = data.agents;
+            populateAgentSelector(data.agents);
+        }
+        
+    } catch (error) {
+        console.error('Error loading agents:', error);
+        DOM.agentSelect.innerHTML = '<option value="">No agents available</option>';
+        DOM.agentDescription.textContent = 'Could not load agents';
+    }
+}
+
+// Poblar el selector de agentes
+function populateAgentSelector(agents) {
+    if (!DOM.agentSelect) return;
+    
+    DOM.agentSelect.innerHTML = '';
+    
+    if (agents.length === 0) {
+        DOM.agentSelect.innerHTML = '<option value="">No agents available</option>';
+        DOM.agentDescription.textContent = 'No AI agents configured. Contact your administrator.';
+        return;
+    }
+    
+    // Agregar opción por defecto
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select an AI Agent';
+    DOM.agentSelect.appendChild(defaultOption);
+    
+    // Agregar agentes
+    agents.forEach(agent => {
+        const option = document.createElement('option');
+        option.value = agent.id;
+        option.textContent = `${agent.name} (${agent.provider.toUpperCase()} - ${agent.model_name || 'Default'})`;
+        option.dataset.description = agent.description || 'No description available';
+        option.dataset.provider = agent.provider;
+        option.dataset.model = agent.model_name || 'Default';
+        DOM.agentSelect.appendChild(option);
+    });
+    
+    // Actualizar descripción inicial
+    updateAgentDescription();
+}
+
+// Actualizar descripción del agente seleccionado
+function updateAgentDescription() {
+    if (!DOM.agentSelect || !DOM.agentDescription) return;
+    
+    const selectedOption = DOM.agentSelect.options[DOM.agentSelect.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        DOM.agentDescription.textContent = 'Select an agent to see details';
+        AppState.selectedAgent = null;
+        return;
+    }
+    
+    const agentId = parseInt(selectedOption.value);
+    const agent = AppState.availableAgents.find(a => a.id === agentId);
+    
+    if (agent) {
+        AppState.selectedAgent = agent;
+        const description = agent.description || 'No description available';
+        const model = agent.model_name || 'Default model';
+        const provider = agent.provider.toUpperCase();
+        
+        DOM.agentDescription.innerHTML = `
+            <strong>${agent.name}</strong><br>
+            <span style="color: var(--primary-color);">${provider} - ${model}</span><br>
+            ${description}
+        `;
+    }
+}
+
 // Crear menú de navegación del sidebar
 function createSidebarNav(user) {
     if (!DOM.sidebarNav) return;
@@ -106,6 +194,15 @@ function createSidebarNav(user) {
             active: false,
             href: '#',
             action: () => console.log('Navigate to All Recordings')
+        });
+        
+        // My Agents
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+            label: 'My Agents',
+            active: false,
+            href: './agents.html',
+            action: () => window.location.href = './agents.html'
         });
         
         menuItems.push({ groupTitle: 'Administration' });
@@ -387,6 +484,8 @@ const AppState = {
     recordingStartTime: null,
     recordingTimer: null,
     recordingType: null, // 'microphone', 'system', 'both'
+    availableAgents: [], // Lista de agentes disponibles
+    selectedAgent: null, // Agente seleccionado
 };
 
 // Elementos del DOM
@@ -400,6 +499,8 @@ const DOM = {
     previewContainer: document.getElementById('previewContainer'),
     processBtn: document.getElementById('processBtn'),
     languageSelect: document.getElementById('languageSelect'),
+    agentSelect: document.getElementById('agentSelect'),
+    agentDescription: document.getElementById('agentDescription'),
     removeAudioBtn: document.getElementById('removeAudioBtn'),
     
     // Preview Section
@@ -1052,10 +1153,33 @@ async function processAudio() {
         // Obtener el idioma seleccionado
         const selectedLanguage = DOM.languageSelect ? DOM.languageSelect.value : 'en';
         
-        const processData = {
-            file_id: fileId,
-            language: selectedLanguage
-        };
+        // Obtener el usuario actual
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        // Determinar si usar un agente o el proceso estándar
+        const useAgent = AppState.selectedAgent !== null;
+        
+        let processData;
+        let endpoint;
+        
+        if (useAgent) {
+            // Usar el endpoint de agentes
+            endpoint = 'http://localhost:5000/api/process-with-agent';
+            processData = {
+                file_id: fileId,
+                language: selectedLanguage,
+                agent_id: AppState.selectedAgent.id,
+                user_id: user.id
+            };
+            updateLoadingMessage(`Processing with ${AppState.selectedAgent.name}...`);
+        } else {
+            // Usar el endpoint estándar
+            endpoint = 'http://localhost:5000/api/process';
+            processData = {
+                file_id: fileId,
+                language: selectedLanguage
+            };
+        }
         
         // Simular progreso con mensajes cambiantes durante la transcripción
         const messageTimeout1 = setTimeout(() => {
@@ -1066,7 +1190,7 @@ async function processAudio() {
             updateLoadingMessage('Generating summary...');
         }, 15000);
         
-        const processResponse = await fetch('http://localhost:5000/api/process', {
+        const processResponse = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1170,6 +1294,11 @@ function initializeEventListeners() {
             handleAudioFile(file);
         }
     });
+    
+    // Cambio en el selector de agentes
+    if (DOM.agentSelect) {
+        DOM.agentSelect.addEventListener('change', updateAgentDescription);
+    }
     
     // Drag and Drop en el upload box
     DOM.uploadBox.addEventListener('dragover', (e) => {
@@ -1309,12 +1438,33 @@ function displaySummary(result) {
     AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
     const speechmaticsSummary = result.speechmatics_summary || null;
+    const agentSummary = result.agent_summary || null;
     
-    // Resumen de Speechmatics
-    let speechmaticsSummaryHTML = '';
-    if (speechmaticsSummary && speechmaticsSummary.content) {
+    // Resumen del Agente (prioritario si existe)
+    let summaryHTML = '';
+    if (agentSummary) {
+        const content = agentSummary.replace(/\n/g, '<br>');
+        const agentInfo = result.agent_used || {};
+        summaryHTML = `
+            <div class="summary-section agent-summary-section">
+                <div class="summary-badge">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    Generated by ${agentInfo.name || 'AI Agent'} (${agentInfo.provider || 'AI'})
+                </div>
+                <div class="speechmatics-summary-content">
+                    ${content}
+                </div>
+            </div>
+        `;
+    }
+    // Resumen de Speechmatics (si no hay agente)
+    else if (speechmaticsSummary && speechmaticsSummary.content) {
         const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
-        speechmaticsSummaryHTML = `
+        summaryHTML = `
             <div class="summary-section speechmatics-summary-section">
                 <div class="speechmatics-summary-content">
                     ${content}
@@ -1344,7 +1494,7 @@ function displaySummary(result) {
         <div class="tabs-content">
             <div class="tab-panel active" id="summaryTab">
                 <div class="summary-container">
-                    ${speechmaticsSummaryHTML}
+                    ${summaryHTML}
                 </div>
             </div>
             <div class="tab-panel" id="transcriptionTab">
@@ -1688,6 +1838,9 @@ function initApp() {
     
     // Inicializar event listeners
     initializeEventListeners();
+    
+    // Cargar agentes disponibles
+    loadUserAgents();
 }
 
 // Iniciar la aplicación cuando el DOM esté listo
