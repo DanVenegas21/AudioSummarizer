@@ -8,111 +8,180 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Sidebar & Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+    
+    <aside id="appSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-user-card" id="sidebarUserCard">
+                <!-- User info populated via JS -->
+            </div>
+        </div>
+        <nav class="sidebar-nav" id="sidebarNav">
+            <!-- Menu items populated via JS -->
+        </nav>
+    </aside>
+
     <!-- SECCIÓN 1: ENCABEZADO -->
     <header class="header">
         <div class="header-container">
-            <div class="logo-section">
-                <div class="logo-placeholder">
-                    <img width="76" height="81" src="https://bos.manuelsolis.com/images/logo.png" alt="Logo">
-                </div>
-                <div class="firm-info">
-                    <h1>The Law Offices of Manuel Solis</h1>
-                    <p>Audio Summarizer</p>
+            <div class="header-left" style="display: flex; align-items: center; gap: 3rem;">
+                <button id="sidebarToggleBtn" class="btn-icon sidebar-toggle" title="Toggle Menu" style="background: transparent; border: none; color: white; cursor: pointer;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="logo-section">
+                    <div class="logo-placeholder">
+                        <img width="76" height="81" src="https://bos.manuelsolis.com/images/logo.png" alt="Logo">
+                    </div>
+                    <div class="firm-info">
+                        <h1>The Law Offices of Manuel Solis</h1>
+                        <p>Online Meetings Summarizer</p>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- SECCIÓN 2: SUBIDA DEL ARCHIVO -->
-    <section class="upload-section" id="uploadSection">
-        <div class="container">
-            <h2 class="section-title">Upload Your Audio or Video Files</h2>
-            <p class="section-subtitle">"Transform your audio/video recordings into comprehensive summaries"</p>
-            <div class="upload-container-new">
-                <!-- Upload Box con botones a los lados -->
-                <div class="upload-box-wrapper">
-                    <button class="btn btn-record" id="recordBtn" title="Record Audio">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="23"/>
-                            <line x1="8" y1="23" x2="16" y2="23"/>
-                        </svg>
-                    </button>
-                    <div class="upload-box-new" id="uploadBox">
+    <!-- SECCIÓN PRINCIPAL: LAYOUT DE 3 COLUMNAS -->
+    <section class="main-workspace">
+        <div class="workspace-container">
+            <!-- COLUMNA IZQUIERDA: Upload y Preview -->
+            <div class="column-left">
+                <div class="upload-panel">
+                    <div class="panel-header">
+                        <h3>1. Upload or record your meeting</h3>
+                        <p>Summarize your meetings with AI</p>
+                    </div>
+                    
+                    <div class="upload-panel-content">
+                        <!-- Upload Box -->
+                        <div class="upload-box-new" id="uploadBox">
                         <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.webm,.mp4,.avi,.mov,.mkv,.flv,.wmv,.mpeg,.mpg,.3gp,.m4v,.ts" hidden>
                         <div class="upload-content-new">
                             <p>Drag and drop an audio or video file here</p>
                         </div>
                     </div>
-                    <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
-                </div>
-                <p class="file-info">Supported: MP3, WAV, M4A, OGG, FLAC, AAC, WEBM, MP4, AVI, MOV, MKV, etc. (Max. 100MB)</p>
-
-                <!-- Audio cargado -->
-                <div class="documents-queue hidden" id="documentsQueue">
-                    <div class="queue-header">
-                        <h3>Audio File Ready to Process</h3>
-                    </div>
-                    <div class="queue-list" id="queueList">
-                        <!-- El audio se agregará dinámicamente aquí -->
-                    </div>
                     
-                    <!-- Selector de idioma -->
-                    <div class="language-selector">
-                        <label for="languageSelect" class="language-label">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    <!-- Botones de acción -->
+                    <div class="upload-buttons-wrapper">
+                        <button class="btn btn-record" id="recordBtn" title="Record Audio">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
                             </svg>
-                            <span>Transcription Language:</span>
-                        </label>
-                        <select id="languageSelect" class="language-select">
-                            <option value="en" selected>English</option>
-                            <option value="es">Spanish (Español)</option>
-                        </select>
-                    </div>
-                    
-                    <button class="btn btn-primary btn-large btn-full-width" id="processAllBtn">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        Generate Summary
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECCIÓN 3: VISUALIZACIÓN DE LOS RESÚMENES -->
-    <section class="preview-section hidden" id="previewSection">
-        <div class="container-wide">
-            <!-- Tabs de navegación entre resúmenes -->
-            <div class="documents-tabs hidden" id="documentsTabs">
-                <div class="tabs-header" id="tabsHeader">
-                    <!-- Las tabs se agregarán dinámicamente -->
-                </div>
-            </div>
-            <!-- Contenedor de resúmenes con tabs -->
-            <div class="documents-viewer" id="documentsViewer">
-                <!-- Cada resumen tendrá su propio panel -->
-            </div>
-            
-            <!-- Chat Footer Estático -->
-            <div class="chat-footer-static hidden" id="chatFooterStatic">
-                <div class="chat-footer-container">
-                    <div class="chat-input-container">
-                        <textarea 
-                            id="chatInput" 
-                            placeholder="Ask me anything about your audio summary..."
-                            rows="1"
-                        ></textarea>
-                        <button class="btn btn-primary chat-send-btn" id="sendChatBtn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 8L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            Send
                         </button>
+                        <button class="btn btn-primary" id="selectFileBtn">Select File...</button>
+                    </div>
+                    
+                    <!-- Audio cargado -->
+                    <div class="audio-preview hidden" id="audioPreview">
+                        <div class="preview-header">
+                            <h3>Audio File Ready to Process</h3>
+                            <button class="btn-close" id="removeAudioBtn" title="Remove audio file">&times;</button>
+                        </div>
+                        <div class="preview-container" id="previewContainer">
+                            <!-- El audio se mostrará dinámicamente aquí -->
+                        </div>
+                        
+                        <!-- Selector de idioma -->
+                        <div class="language-selector">
+                            <label for="languageSelect" class="language-label">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                                <span>Transcription Language:</span>
+                            </label>
+                            <select id="languageSelect" class="language-select">
+                                <option value="en" selected>English</option>
+                                <option value="es">Spanish (Español)</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-large btn-full-width" id="processBtn">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            Summarize
+                        </button>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA CENTRO: Summary y Transcripción -->
+            <div class="column-center">
+                <div class="summary-panel">
+                    <div class="panel-header">
+                        <h3>2. Summary & Transcription</h3>
+                        <p>AI-generated summary and full transcription</p>
+                    </div>
+                    
+                    <!-- Contenedor de resúmenes con pestañas -->
+                    <div class="summary-viewer" id="summaryViewer">
+                        <!-- Placeholder inicial -->
+                        <div class="summary-placeholder" id="summaryPlaceholder">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <line x1="10" y1="9" x2="8" y2="9"></line>
+                            </svg>
+                            <h3>Ready to summarize</h3>
+                            <p>Upload an audio file or start recording to generate insights.</p>
+                            <span class="placeholder-hint">Your summary will appear here</span>
+                        </div>
+
+                        <!-- Skeleton Loader (Oculto por defecto) -->
+                        <div id="loadingSkeleton" class="skeleton-loader" style="display: none;">
+                            <div class="skeleton-line title"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                            <div id="loadingStatusText" class="loading-status">Transcribing audio...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: Chat -->
+            <div class="column-right">
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <h3>3. Chat with Gemini</h3>
+                        <p>Ask questions about your audio summary</p>
+                    </div>
+                    
+                    <!-- Contenedor de mensajes del chat -->
+                    <div class="chat-messages-container" id="chatMessagesContainer">
+                        <!-- Los mensajes se agregarán dinámicamente aquí -->
+                    </div>
+                    
+                    <!-- Chat Footer (siempre visible pero deshabilitado inicialmente) -->
+                    <div class="chat-footer-container" id="chatFooterStatic">
+                        <div class="chat-input-container">
+                            <textarea 
+                                id="chatInput" 
+                                placeholder="Ask me anything about your audio summary..."
+                                rows="2"
+                                disabled
+                            ></textarea>
+                            <button class="btn btn-primary chat-send-btn" id="sendChatBtn" disabled>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 8L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Send
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -122,6 +191,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
+            <p>&copy; 2025 The Law Offices of Manuel Solis. All rights reserved.</p>
         </div>
     </footer>
 
@@ -137,6 +207,93 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" id="closeErrorBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cambiar Contraseña -->
+    <div class="modal hidden" id="changePasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <button class="btn-close" id="closeChangePasswordModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword" class="form-label">Current Password</label>
+                        <div class="password-input-wrapper">
+                            <input 
+                                type="password" 
+                                id="currentPassword" 
+                                name="currentPassword" 
+                                class="form-input" 
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button type="button" class="btn-toggle-password" data-target="currentPassword" title="Show password">
+                                <svg class="icon-hide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="icon-show hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword" class="form-label">New Password</label>
+                        <div class="password-input-wrapper">
+                            <input 
+                                type="password" 
+                                id="newPassword" 
+                                name="newPassword" 
+                                class="form-input" 
+                                required
+                                autocomplete="new-password"
+                            >
+                            <button type="button" class="btn-toggle-password" data-target="newPassword" title="Show password">
+                                <svg class="icon-hide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="icon-show hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <div class="password-input-wrapper">
+                            <input 
+                                type="password" 
+                                id="confirmPassword" 
+                                name="confirmPassword" 
+                                class="form-input" 
+                                required
+                                autocomplete="new-password"
+                            >
+                            <button type="button" class="btn-toggle-password" data-target="confirmPassword" title="Show password">
+                                <svg class="icon-hide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="icon-show hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelChangePasswordBtn">Cancel</button>
+                <button class="btn btn-primary" id="submitChangePasswordBtn">Change Password</button>
             </div>
         </div>
     </div>

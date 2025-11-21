@@ -24,12 +24,16 @@ except ImportError:
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 from transcription_service import transcribir_audio_service, procesar_transcripcion_para_texto, extraer_resumen_speechmatics, procesar_transcripcion_estructurada
-from summary_service import generar_resumen_completo, chat_con_gemini, editar_resumen_con_gemini
+from summary_service import generar_resumen_completo, chat_con_gemini, editar_resumen_con_gemini, generar_resumen_con_agente
 from video_service import extraer_audio_de_video, es_archivo_video, verificar_es_video_real
 from system_Audio import esta_disponible_grabacion_sistema, iniciar_grabacion_sistema, detener_grabacion_sistema, esta_grabando_sistema
+from auth_service import authenticate_user, get_user_by_id, change_password
+from database import test_connection
+from agents.agents_service import (create_agent, get_agent_by_id, get_agents_by_user, 
+                           update_agent, delete_agent, hard_delete_agent)
 
 # Configurar logging
-logging.basicConfig(level=logging.WARNING)  # Cambiar de INFO a WARNING
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Silenciar logs de librerías externas y servicios
@@ -69,17 +73,36 @@ def generate_unique_filename(original_filename):
     unique_name = f"{uuid.uuid4().hex}.{ext}"
     return unique_name
 
+def serialize_agent(agent):
+    """Convierte campos datetime de un agente a cadenas ISO 8601."""
+    if not agent:
+        return agent
+    agent_dict = dict(agent)
+    for field in ('created_at', 'updated_at'):
+        value = agent_dict.get(field)
+        if value and hasattr(value, 'isoformat'):
+            agent_dict[field] = value.isoformat()
+    return agent_dict
+
 # ENDPOINTS
 @app.route('/')
 def index():
-    """Endpoint raíz - información de la API"""
+    """Sirve la página de login del frontend"""
+    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
+    return send_from_directory(frontend_path, 'login.html')
+
+@app.route('/api')
+@app.route('/api/')
+def api_info():
+    """Endpoint con información de la API"""
     return jsonify({
         'name': 'Audio Summarizer API',
         'version': '1.0.0',
         'endpoints': {
             'upload': '/api/upload',
             'process': '/api/process',
-            'health': '/api/health'
+            'health': '/api/health',
+            'login': '/api/login'
         }
     })
 
@@ -90,8 +113,106 @@ def health_check():
         'status': 'healthy',
         'message': 'Server is running',
         'system_audio_available': esta_disponible_grabacion_sistema(),
-        'system_audio_recording': esta_grabando_sistema()
+        'system_audio_recording': esta_grabando_sistema(),
+        'database_connected': test_connection()
     })
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    """
+    Endpoint para autenticar usuarios
+    
+    Espera:
+        - email: Email del usuario
+        - password: Contraseña del usuario
+    
+    Retorna:
+        - user: Información del usuario autenticado
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'password' not in data:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        email = data['email'].strip()
+        password = data['password']
+        
+        # Validar que no estén vacíos
+        if not email or not password:
+            return jsonify({'error': 'Email and password cannot be empty'}), 400
+        
+        # Autenticar usuario
+        user = authenticate_user(email, password)
+        
+        if user is None:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid credentials'
+            }), 401
+        
+        # Convertir el objeto datetime a string para JSON
+        if 'created_at' in user and user['created_at']:
+            user['created_at'] = user['created_at'].isoformat()
+        
+        return jsonify({
+            'success': True,
+            'user': user
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error en login: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error during login: {str(e)}'}), 500
+
+@app.route('/api/change-password', methods=['POST'])
+def change_user_password():
+    """
+    Endpoint para cambiar la contraseña del usuario
+    
+    Espera:
+        - email: Email del usuario
+        - current_password: Contraseña actual
+        - new_password: Nueva contraseña
+    
+    Retorna:
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'current_password' not in data or 'new_password' not in data:
+            return jsonify({'error': 'Email, current password and new password are required'}), 400
+        
+        email = data['email'].strip()
+        current_password = data['current_password']
+        new_password = data['new_password']
+        
+        # Validar que no estén vacíos
+        if not email or not current_password or not new_password:
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        # Validar longitud de la nueva contraseña
+        if len(new_password) < 4:
+            return jsonify({'error': 'New password must be at least 4 characters long'}), 400
+        
+        # Cambiar contraseña
+        success = change_password(email, current_password, new_password)
+        
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': 'Current password is incorrect'
+            }), 401
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error al cambiar contraseña: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error changing password: {str(e)}'}), 500
 
 @app.route('/api/start-system-recording', methods=['POST'])
 def start_system_recording():
@@ -490,6 +611,395 @@ def serve_index():
     frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
     return send_from_directory(frontend_path, 'index.html')
 
+# ENDPOINTS DE AGENTES PERSONALIZADOS
+@app.route('/api/agents', methods=['POST'])
+def create_custom_agent():
+    """
+    Endpoint para crear un agente personalizado
+    
+    Espera:
+        - user_id: ID del usuario propietario
+        - name: Nombre del agente
+        - description: Descripción del agente
+        - provider: Proveedor de IA ('gemini' o 'openai')
+        - prompt_template: Reglas o instrucciones personalizadas del usuario (texto/Markdown)
+        - model_name: Nombre del modelo específico (opcional)
+    
+    Retorna:
+        - agent: Información del agente creado
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        # Validar campos requeridos
+        required_fields = ['user_id', 'name', 'provider', 'prompt_template']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        user_id = data['user_id']
+        name = data['name']
+        description = data.get('description', '')
+        provider = data['provider']
+        prompt_template = data['prompt_template']
+        model_name = data.get('model_name')
+        
+        # Validar proveedor
+        if provider.lower() not in ['gemini', 'openai']:
+            return jsonify({'error': 'provider must be "gemini" or "openai"'}), 400
+        
+        # Crear agente
+        agent = create_agent(
+            user_id=user_id,
+            name=name,
+            description=description,
+            provider=provider,
+            prompt_template=prompt_template,
+            model_name=model_name
+        )
+        
+        if not agent:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create agent'
+            }), 500
+        
+        # Convertir datetime a string para JSON
+        agent = serialize_agent(agent)
+        
+        return jsonify({
+            'success': True,
+            'agent': agent
+        }), 201
+        
+    except ValueError as e:
+        return jsonify({'error': f'Invalid value: {str(e)}'}), 400
+    except Exception as e:
+        logger.error(f"Error al crear agente: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error creating agent: {str(e)}'}), 500
+
+
+@app.route('/api/agents', methods=['GET'])
+def list_agents():
+    """
+    Endpoint para listar agentes de un usuario
+    
+    Parámetros de query:
+        - user_id: ID del usuario (requerido)
+        - only_active: Si es true, solo devuelve agentes activos (opcional, default true)
+    
+    Retorna:
+        - agents: Lista de agentes
+        - success: true/false
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+        
+        user_id = int(user_id)
+        only_active = request.args.get('only_active', 'true').lower() == 'true'
+        
+        agents = [
+            serialize_agent(agent)
+            for agent in get_agents_by_user(user_id, only_active=only_active)
+        ]
+        
+        return jsonify({
+            'success': True,
+            'agents': agents
+        }), 200
+        
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id'}), 400
+    except Exception as e:
+        logger.error(f"Error al listar agentes: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error listing agents: {str(e)}'}), 500
+
+
+@app.route('/api/agents/<int:agent_id>', methods=['GET'])
+def get_agent(agent_id):
+    """
+    Endpoint para obtener un agente por ID
+    
+    Parámetros de query:
+        - user_id: ID del usuario (opcional, para verificar propiedad)
+    
+    Retorna:
+        - agent: Información del agente
+        - success: true/false
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if user_id:
+            user_id = int(user_id)
+            agent = get_agent_by_id(agent_id, user_id=user_id)
+        else:
+            agent = get_agent_by_id(agent_id)
+        
+        if not agent:
+            return jsonify({
+                'success': False,
+                'error': 'Agent not found'
+            }), 404
+        
+        agent = serialize_agent(agent)
+        
+        return jsonify({
+            'success': True,
+            'agent': agent
+        }), 200
+        
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id'}), 400
+    except Exception as e:
+        logger.error(f"Error al obtener agente: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error getting agent: {str(e)}'}), 500
+
+
+@app.route('/api/agents/<int:agent_id>', methods=['PUT'])
+def update_custom_agent(agent_id):
+    """
+    Endpoint para actualizar un agente existente
+    
+    Espera:
+        - user_id: ID del usuario propietario (requerido)
+        - Cualquier campo a actualizar (name, description, prompt_template, etc.)
+    
+    Retorna:
+        - agent: Información del agente actualizado
+        - success: true/false
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'user_id' not in data:
+            return jsonify({'error': 'user_id is required'}), 400
+        
+        user_id = int(data['user_id'])
+        
+        # Preparar campos a actualizar
+        update_fields = {}
+        allowed_fields = ['name', 'description', 'provider', 'prompt_template', 
+                         'model_name', 'is_active']
+        
+        for field in allowed_fields:
+            if field in data:
+                update_fields[field] = data[field]
+        
+        if not update_fields:
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        # Validar proveedor si se está actualizando
+        if 'provider' in update_fields and update_fields['provider'].lower() not in ['gemini', 'openai']:
+            return jsonify({'error': 'provider must be "gemini" or "openai"'}), 400
+        
+        # Actualizar agente
+        agent = update_agent(agent_id, user_id, **update_fields)
+        
+        if not agent:
+            return jsonify({
+                'success': False,
+                'error': 'Agent not found or update failed'
+            }), 404
+        
+        agent = serialize_agent(agent)
+        
+        return jsonify({
+            'success': True,
+            'agent': agent
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({'error': f'Invalid value: {str(e)}'}), 400
+    except Exception as e:
+        logger.error(f"Error al actualizar agente: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error updating agent: {str(e)}'}), 500
+
+
+@app.route('/api/agents/<int:agent_id>', methods=['DELETE'])
+def delete_custom_agent(agent_id):
+    """
+    Endpoint para eliminar un agente (soft delete)
+    
+    Parámetros de query:
+        - user_id: ID del usuario propietario (requerido)
+        - hard: Si es true, elimina permanentemente (opcional, default false)
+    
+    Retorna:
+        - success: true/false
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+        
+        user_id = int(user_id)
+        hard = request.args.get('hard', 'false').lower() == 'true'
+        
+        if hard:
+            success = hard_delete_agent(agent_id, user_id)
+            message = 'Agent deleted permanently'
+        else:
+            success = delete_agent(agent_id, user_id)
+            message = 'Agent deactivated'
+        
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': 'Agent not found or delete failed'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        }), 200
+        
+    except ValueError:
+        return jsonify({'error': 'Invalid user_id'}), 400
+    except Exception as e:
+        logger.error(f"Error al eliminar agente: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error deleting agent: {str(e)}'}), 500
+
+
+@app.route('/api/process-with-agent', methods=['POST'])
+def process_audio_with_agent():
+    """
+    Endpoint para procesar audio usando un agente personalizado
+    
+    Espera:
+        - file_id: ID del archivo previamente subido
+        - agent_config: Configuración completa del agente (para modo local)
+             OR
+        - agent_id: ID del agente a usar (para modo DB)
+        - user_id: ID del usuario (para verificar propiedad del agente en modo DB)
+        
+        - language: código del idioma (opcional, por defecto 'es')
+        - speechmatics_api_key: API key de Speechmatics (opcional)
+        - gemini_api_key: API key de Gemini (opcional)
+        - openai_api_key: API key de OpenAI (opcional)
+    
+    Retorna:
+        - transcription: texto transcrito completo
+        - dialogues: array de diálogos estructurados por hablante
+        - summary: resumen básico
+        - agent_summary: resumen generado por el agente personalizado
+        - speechmatics_summary: resumen de Speechmatics (si disponible)
+    """
+    try:
+        data = request.get_json()
+        
+        # Validar campos básicos
+        if not data or 'file_id' not in data:
+            return jsonify({'error': 'file_id is required'}), 400
+        
+        file_id = data['file_id']
+        language = data.get('language')
+        speechmatics_api_key = data.get('speechmatics_api_key', os.environ.get('SPEECHMATICS_API_KEY'))
+        gemini_api_key = data.get('gemini_api_key', os.environ.get('GEMINI_API_KEY'))
+        openai_api_key = data.get('openai_api_key', os.environ.get('OPENAI_API_KEY'))
+        
+        # Determinar el agente (Local vs DB)
+        agent = None
+        
+        # CASO 1: Agente Local (enviado completo desde frontend)
+        if 'agent_config' in data:
+            logger.info("Usando configuración de agente local proporcionada en la petición")
+            agent = data['agent_config']
+            # Validar campos mínimos del agente local
+            if 'provider' not in agent or 'prompt_template' not in agent:
+                 return jsonify({'error': 'Invalid local agent config: provider and prompt_template are required'}), 400
+                 
+        # CASO 2: Agente de Base de Datos (búsqueda por ID)
+        elif 'agent_id' in data and 'user_id' in data:
+            agent_id = int(data['agent_id'])
+            user_id = int(data['user_id'])
+            agent = get_agent_by_id(agent_id, user_id=user_id)
+            
+            if not agent:
+                return jsonify({'error': 'Agent not found in database'}), 404
+            
+            if not agent.get('is_active'):
+                return jsonify({'error': 'Agent is not active'}), 400
+        else:
+            return jsonify({'error': 'Either agent_config OR (agent_id AND user_id) must be provided'}), 400
+        
+        
+        # Verificar que existe el archivo
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Verificar Speechmatics API key
+        if not speechmatics_api_key:
+            return jsonify({'error': 'Speechmatics API key is required'}), 400
+            
+        # Verificar que la API key del proveedor esté disponible
+        provider = agent.get('provider', '').lower()
+        if provider == 'gemini' and not gemini_api_key:
+            return jsonify({'error': 'Gemini API key is required for this agent'}), 400
+        elif provider == 'openai' and not openai_api_key:
+            return jsonify({'error': 'OpenAI API key is required for this agent'}), 400
+        
+        # Transcribir con Speechmatics
+        resultado_transcripcion = transcribir_audio_service(
+            archivo_audio=file_path,
+            api_key=speechmatics_api_key,
+            idioma=language
+        )
+        
+        if not resultado_transcripcion:
+            return jsonify({'error': 'Transcription failed'}), 500
+        
+        # Procesar transcripción
+        texto_transcrito = procesar_transcripcion_para_texto(resultado_transcripcion)
+        dialogos = procesar_transcripcion_estructurada(resultado_transcripcion)
+        resumen_speechmatics = extraer_resumen_speechmatics(resultado_transcripcion)
+        
+        # Generar resumen básico
+        resumen = generar_resumen_completo(texto_transcrito, resultado_transcripcion)
+        
+        # Generar resumen con el agente personalizado
+        resumen_agente = generar_resumen_con_agente(
+            transcription=texto_transcrito,
+            agent_config=agent,
+            gemini_api_key=gemini_api_key,
+            openai_api_key=openai_api_key
+        )
+        
+        # Limpiar el archivo subido
+        os.remove(file_path)
+        
+        response_data = {
+            'success': True,
+            'transcription': texto_transcrito,
+            'dialogues': dialogos,
+            'summary': resumen['resumen_basico'],
+            'agent_summary': resumen_agente,
+            'agent_used': {
+                'id': agent.get('id', 'local'),
+                'name': agent.get('name', 'Local Agent'),
+                'provider': agent.get('provider')
+            }
+        }
+        
+        # Agregar resumen de Speechmatics si está disponible
+        if resumen_speechmatics:
+            response_data['speechmatics_summary'] = resumen_speechmatics
+        
+        return jsonify(response_data), 200
+        
+    except ValueError as e:
+        return jsonify({'error': f'Invalid value: {str(e)}'}), 400
+    except Exception as e:
+        logger.error(f"Error al procesar audio con agente: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Error processing audio with agent: {str(e)}'}), 500
+
+
 # MANEJO DE ERRORES
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -518,7 +1028,13 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-    print(f"\nFrontend disponible en http://localhost:{port}/frontend\n")
+    print(f"\n{'='*60}")
+    print(f"  Audio Summarizer - Server Running")
+    print(f"{'='*60}")
+    print(f"  Frontend (Login):  http://localhost:{port}/")
+    print(f"  App Principal:     http://localhost:{port}/index.html")
+    print(f"  API Info:          http://localhost:{port}/api")
+    print(f"{'='*60}\n")
     
     app.run(
         host='0.0.0.0',

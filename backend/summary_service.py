@@ -220,3 +220,33 @@ Answer:"""
     except Exception as e:
         logger.error(f"Error en chat con Gemini: {str(e)}")
         return f"Lo siento, ocurrió un error al procesar tu pregunta: {str(e)}"
+
+def generar_resumen_con_agente(transcription, agent_config, gemini_api_key=None, openai_api_key=None):
+    """
+    Genera un resumen usando un agente personalizado
+    
+    Args:
+        transcription (str): Texto de la transcripción
+        agent_config (dict): Configuración del agente personalizado
+        gemini_api_key (str): API key de Gemini (opcional)
+        openai_api_key (str): API key de OpenAI (opcional)
+    
+    Returns:
+        str: Resumen generado por el agente
+    """
+    try:
+        from agents.agents_service import generate_with_agent
+        
+        return generate_with_agent(
+            agent_config=agent_config,
+            transcription=transcription,
+            gemini_api_key=gemini_api_key,
+            openai_api_key=openai_api_key
+        )
+    
+    except ImportError:
+        logger.error("agents.agents_service no está disponible")
+        return "Error: Servicio de agentes no disponible"
+    except Exception as e:
+        logger.error(f"Error al generar resumen con agente: {str(e)}")
+        return f"Error: {str(e)}"

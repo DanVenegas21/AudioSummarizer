@@ -2,169 +2,168 @@
 Servicio de procesamiento de video para extraer audio
 Usa moviepy para extraer la pista de audio de archivos de video
 """
-
+ 
 import os
 import logging
 from pathlib import Path
-
+ 
 logger = logging.getLogger(__name__)
-
+ 
 try:
-    from moviepy.editor import VideoFileClip
+    # moviepy v2.x expone las clases en el nivel del paquete
+    from moviepy import VideoFileClip
     MOVIEPY_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     MOVIEPY_AVAILABLE = False
-    logger.warning("moviepy no está instalado. Funciones de video deshabilitadas.")
-
-
+    logger.warning(f"moviepy no está disponible ({e}). Funciones de video deshabilitadas.")
+ 
+ 
 def extraer_audio_de_video(video_path, output_path=None, audio_format='mp3'):
     """
     Extrae el audio de un archivo de video y lo guarda como archivo de audio
-    
+   
     Args:
         video_path (str): Ruta al archivo de video
         output_path (str): Ruta donde guardar el audio extraído (opcional)
         audio_format (str): Formato del audio de salida ('mp3', 'wav', etc.)
-    
+   
     Returns:
         str: Ruta al archivo de audio extraído, o None si hay error
     """
-    
+   
     if not MOVIEPY_AVAILABLE:
         logger.error("moviepy no está instalado. Instala con: pip install moviepy")
         return None
-    
+   
     try:
         # Verificar que el archivo existe
         if not os.path.exists(video_path):
             logger.error(f"Archivo de video no encontrado: {video_path}")
             return None
-        
+       
         # Generar ruta de salida si no se proporciona
         if output_path is None:
             video_dir = os.path.dirname(video_path)
             video_name = Path(video_path).stem
             output_path = os.path.join(video_dir, f"{video_name}.{audio_format}")
-        
+       
         logger.info(f"Extrayendo audio de {video_path}")
-        
+       
         # Cargar el video
         video = VideoFileClip(video_path)
-        
+       
         # Verificar que el video tiene audio
         if video.audio is None:
             logger.error(f"El video no contiene pista de audio: {video_path}")
             video.close()
             return None
-        
+       
         # Extraer el audio
         audio = video.audio
-        
+       
         # Guardar el audio
         audio.write_audiofile(
             output_path,
             codec='libmp3lame' if audio_format == 'mp3' else None,
             logger=None  # Silenciar logs de moviepy
         )
-        
+       
         # Cerrar los recursos
         audio.close()
         video.close()
-        
+       
         logger.info(f"Audio extraído exitosamente: {output_path}")
         return output_path
-        
+       
     except Exception as e:
         logger.error(f"Error al extraer audio del video: {str(e)}")
         return None
-
-
+ 
+ 
 def es_archivo_video(filename):
     """
     Verifica si un archivo es un video basándose en su extensión
-    
+   
     Args:
         filename (str): Nombre del archivo
-    
+   
     Returns:
         bool: True si es un video, False si no
-    
+   
     Nota: webm se excluye porque puede ser tanto audio como video.
           Use verificar_es_video_real() para una verificación más precisa.
     """
     extensiones_video = {
-        'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 
+        'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv',
         'mpeg', 'mpg', '3gp', 'm4v', 'ts'
     }
-    
+   
     if '.' not in filename:
         return False
-    
+   
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in extensiones_video
-
-
+ 
+ 
 def verificar_es_video_real(file_path):
     """
     Verifica si un archivo es realmente un video inspeccionando su contenido
-    
+   
     Args:
         file_path (str): Ruta al archivo
-    
+   
     Returns:
         bool: True si es un video con pista de video, False si no
     """
     if not MOVIEPY_AVAILABLE:
         # Fallback a verificación por extensión
         return es_archivo_video(os.path.basename(file_path))
-    
+   
     try:
         # Intentar abrir como video
         video = VideoFileClip(file_path)
-        
+       
         # Verificar que tenga pista de video (fps y size deben existir)
         has_video = hasattr(video, 'fps') and video.fps is not None and video.size is not None
-        
+       
         video.close()
-        
+       
         return has_video
-        
+       
     except Exception as e:
         logger.debug(f"El archivo no es un video válido: {str(e)}")
         return False
-
-
+ 
+ 
 def obtener_info_video(video_path):
     """
     Obtiene información básica del video
-    
+   
     Args:
         video_path (str): Ruta al archivo de video
-    
+   
     Returns:
         dict: Información del video (duración, fps, resolución, etc.)
     """
-    
+   
     if not MOVIEPY_AVAILABLE:
         logger.error("moviepy no está instalado")
         return None
-    
+   
     try:
         video = VideoFileClip(video_path)
-        
+       
         info = {
             'duration': video.duration,
             'fps': video.fps,
             'size': video.size,
             'has_audio': video.audio is not None
         }
-        
+       
         video.close()
-        
+       
         return info
-        
+       
     except Exception as e:
         logger.error(f"Error al obtener información del video: {str(e)}")
         return None
-
-
