@@ -71,6 +71,94 @@ function populateSidebarUserInfo(user) {
     `;
 }
 
+// Cargar agentes disponibles para el usuario
+async function loadUserAgents() {
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) return;
+        
+        const response = await fetch(`http://localhost:5000/api/agents?user_id=${user.id}&only_active=true`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to load agents');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.agents) {
+            AppState.availableAgents = data.agents;
+            populateAgentSelector(data.agents);
+        }
+        
+    } catch (error) {
+        console.error('Error loading agents:', error);
+        DOM.agentSelect.innerHTML = '<option value="">No agents available</option>';
+        DOM.agentDescription.textContent = 'Could not load agents';
+    }
+}
+
+// Poblar el selector de agentes
+function populateAgentSelector(agents) {
+    if (!DOM.agentSelect) return;
+    
+    DOM.agentSelect.innerHTML = '';
+    
+    if (agents.length === 0) {
+        DOM.agentSelect.innerHTML = '<option value="">No agents available</option>';
+        DOM.agentDescription.textContent = 'No AI agents configured. Contact your administrator.';
+        return;
+    }
+    
+    // Agregar opción por defecto
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select an AI Agent';
+    DOM.agentSelect.appendChild(defaultOption);
+    
+    // Agregar agentes
+    agents.forEach(agent => {
+        const option = document.createElement('option');
+        option.value = agent.id;
+        option.textContent = `${agent.name} (${agent.provider.toUpperCase()} - ${agent.model_name || 'Default'})`;
+        option.dataset.description = agent.description || 'No description available';
+        option.dataset.provider = agent.provider;
+        option.dataset.model = agent.model_name || 'Default';
+        DOM.agentSelect.appendChild(option);
+    });
+    
+    // Actualizar descripción inicial
+    updateAgentDescription();
+}
+
+// Actualizar descripción del agente seleccionado
+function updateAgentDescription() {
+    if (!DOM.agentSelect || !DOM.agentDescription) return;
+    
+    const selectedOption = DOM.agentSelect.options[DOM.agentSelect.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        DOM.agentDescription.textContent = 'Select an agent to see details';
+        AppState.selectedAgent = null;
+        return;
+    }
+    
+    const agentId = parseInt(selectedOption.value);
+    const agent = AppState.availableAgents.find(a => a.id === agentId);
+    
+    if (agent) {
+        AppState.selectedAgent = agent;
+        const description = agent.description || 'No description available';
+        const model = agent.model_name || 'Default model';
+        const provider = agent.provider.toUpperCase();
+        
+        DOM.agentDescription.innerHTML = `
+            <strong>${agent.name}</strong><br>
+            <span style="color: var(--primary-color);">${provider} - ${model}</span><br>
+            ${description}
+        `;
+    }
+}
+
 // Crear menú de navegación del sidebar
 function createSidebarNav(user) {
     if (!DOM.sidebarNav) return;
@@ -106,6 +194,15 @@ function createSidebarNav(user) {
             active: false,
             href: '#',
             action: () => console.log('Navigate to All Recordings')
+        });
+        
+        // My Agents
+        menuItems.push({
+            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>',
+            label: 'My Agents',
+            active: false,
+            href: './agents.html',
+            action: () => window.location.href = './agents.html'
         });
         
         menuItems.push({ groupTitle: 'Administration' });
@@ -387,6 +484,8 @@ const AppState = {
     recordingStartTime: null,
     recordingTimer: null,
     recordingType: null, // 'microphone', 'system', 'both'
+    availableAgents: [], // Lista de agentes disponibles
+    selectedAgent: null, // Agente seleccionado
 };
 
 // Elementos del DOM
@@ -400,6 +499,8 @@ const DOM = {
     previewContainer: document.getElementById('previewContainer'),
     processBtn: document.getElementById('processBtn'),
     languageSelect: document.getElementById('languageSelect'),
+    agentSelect: document.getElementById('agentSelect'),
+    agentDescription: document.getElementById('agentDescription'),
     removeAudioBtn: document.getElementById('removeAudioBtn'),
     
     // Preview Section
@@ -1052,10 +1153,33 @@ async function processAudio() {
         // Obtener el idioma seleccionado
         const selectedLanguage = DOM.languageSelect ? DOM.languageSelect.value : 'en';
         
-        const processData = {
-            file_id: fileId,
-            language: selectedLanguage
-        };
+        // Obtener el usuario actual
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        // Determinar si usar un agente o el proceso estándar
+        const useAgent = AppState.selectedAgent !== null;
+        
+        let processData;
+        let endpoint;
+        
+        if (useAgent) {
+            // Usar el endpoint de agentes
+            endpoint = 'http://localhost:5000/api/process-with-agent';
+            processData = {
+                file_id: fileId,
+                language: selectedLanguage,
+                agent_id: AppState.selectedAgent.id,
+                user_id: user.id
+            };
+            updateLoadingMessage(`Processing with ${AppState.selectedAgent.name}...`);
+        } else {
+            // Usar el endpoint estándar
+            endpoint = 'http://localhost:5000/api/process';
+            processData = {
+                file_id: fileId,
+                language: selectedLanguage
+            };
+        }
         
         // Simular progreso con mensajes cambiantes durante la transcripción
         const messageTimeout1 = setTimeout(() => {
@@ -1066,7 +1190,7 @@ async function processAudio() {
             updateLoadingMessage('Generating summary...');
         }, 15000);
         
-        const processResponse = await fetch('http://localhost:5000/api/process', {
+        const processResponse = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1137,19 +1261,26 @@ function initializeEventListeners() {
         DOM.sidebarOverlay.addEventListener('click', closeSidebar);
     }
     
-    DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
+    // Botón de grabación (solo existe en index.html)
+    if (DOM.recordBtn) {
+        DOM.recordBtn.addEventListener('click', handleRecordButtonClick);
+    }
     
-    // Modal de selección de tipo de grabación
-    DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
+    // Modal de selección de tipo de grabación (solo existe en index.html)
+    if (DOM.closeRecordTypeModalBtn) {
+        DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
+    }
     
-    // Cerrar modal al hacer click fuera
-    DOM.recordTypeModal.addEventListener('click', (e) => {
-        if (e.target === DOM.recordTypeModal) {
-            closeRecordTypeModal();
-        }
-    });
+    if (DOM.recordTypeModal) {
+        // Cerrar modal al hacer click fuera
+        DOM.recordTypeModal.addEventListener('click', (e) => {
+            if (e.target === DOM.recordTypeModal) {
+                closeRecordTypeModal();
+            }
+        });
+    }
     
-    // Manejar selección de tipo de grabación
+    // Manejar selección de tipo de grabación (solo existe en index.html)
     document.querySelectorAll('.record-type-option').forEach(button => {
         button.addEventListener('click', () => {
             const type = button.getAttribute('data-type');
@@ -1158,80 +1289,126 @@ function initializeEventListeners() {
         });
     });
     
-    // Click en el botón de seleccionar archivo
-    DOM.selectFileBtn.addEventListener('click', () => {
-        DOM.fileInput.click();
-    });
+    // Click en el botón de seleccionar archivo (solo existe en index.html)
+    if (DOM.selectFileBtn) {
+        DOM.selectFileBtn.addEventListener('click', () => {
+            DOM.fileInput.click();
+        });
+    }
     
-    // Cambio en el input de archivo
-    DOM.fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            handleAudioFile(file);
-        }
-    });
+    // Cambio en el input de archivo (solo existe en index.html)
+    if (DOM.fileInput) {
+        DOM.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleAudioFile(file);
+            }
+        });
+    }
     
-    // Drag and Drop en el upload box
-    DOM.uploadBox.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        DOM.uploadBox.classList.add('drag-over');
-    });
+    // Cambio en el selector de agentes (solo existe en index.html)
+    if (DOM.agentSelect) {
+        DOM.agentSelect.addEventListener('change', updateAgentDescription);
+    }
     
-    DOM.uploadBox.addEventListener('dragleave', () => {
-        DOM.uploadBox.classList.remove('drag-over');
-    });
-    
-    DOM.uploadBox.addEventListener('drop', (e) => {
-        e.preventDefault();
-        DOM.uploadBox.classList.remove('drag-over');
-        
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleAudioFile(file);
-        }
-    });
-    
-    DOM.processBtn.addEventListener('click', processAudio); // Botón de procesar
-    
-    // Botón de eliminar audio
-    DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
-    
-    // Modales de error
-    DOM.closeModalBtn.addEventListener('click', closeErrorModal);
-    DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
-    
-    // Click fuera del modal para cerrar
-    DOM.errorModal.addEventListener('click', (e) => {
-        if (e.target === DOM.errorModal) {
-            closeErrorModal();
-        }
-    });
-    
-    DOM.sendChatBtn.addEventListener('click', handleChatMessage); // Chat Footer Estático
-    
-    DOM.chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+    // Drag and Drop en el upload box (solo existe en index.html)
+    if (DOM.uploadBox) {
+        DOM.uploadBox.addEventListener('dragover', (e) => {
             e.preventDefault();
-            handleChatMessage();
-        }
-    });
+            DOM.uploadBox.classList.add('drag-over');
+        });
+        
+        DOM.uploadBox.addEventListener('dragleave', () => {
+            DOM.uploadBox.classList.remove('drag-over');
+        });
+        
+        DOM.uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            DOM.uploadBox.classList.remove('drag-over');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleAudioFile(file);
+            }
+        });
+    }
     
-    // User Menu
-    DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
-    DOM.btnLogout.addEventListener('click', logout);
-    DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    // Botón de procesar (solo existe en index.html)
+    if (DOM.processBtn) {
+        DOM.processBtn.addEventListener('click', processAudio);
+    }
     
-    // Change Password Modal
-    DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
-    DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
-    DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    // Botón de eliminar audio (solo existe en index.html)
+    if (DOM.removeAudioBtn) {
+        DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
+    }
     
-    // Cerrar modal al hacer click fuera
-    DOM.changePasswordModal.addEventListener('click', (e) => {
-        if (e.target === DOM.changePasswordModal) {
-            closeChangePasswordModal();
-        }
-    });
+    // Modales de error (común a todas las páginas)
+    if (DOM.closeModalBtn) {
+        DOM.closeModalBtn.addEventListener('click', closeErrorModal);
+    }
+    
+    if (DOM.closeErrorBtn) {
+        DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
+    }
+    
+    if (DOM.errorModal) {
+        // Click fuera del modal para cerrar
+        DOM.errorModal.addEventListener('click', (e) => {
+            if (e.target === DOM.errorModal) {
+                closeErrorModal();
+            }
+        });
+    }
+    
+    // Chat (solo existe en index.html)
+    if (DOM.sendChatBtn) {
+        DOM.sendChatBtn.addEventListener('click', handleChatMessage);
+    }
+    
+    if (DOM.chatInput) {
+        DOM.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChatMessage();
+            }
+        });
+    }
+    
+    // User Menu (común a todas las páginas - pero puede no existir en todas)
+    if (DOM.btnUserMenu) {
+        DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
+    }
+    
+    if (DOM.btnLogout) {
+        DOM.btnLogout.addEventListener('click', logout);
+    }
+    
+    if (DOM.btnChangePassword) {
+        DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    }
+    
+    // Change Password Modal (común a todas las páginas - pero puede no existir en todas)
+    if (DOM.closeChangePasswordModalBtn) {
+        DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (DOM.cancelChangePasswordBtn) {
+        DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (DOM.submitChangePasswordBtn) {
+        DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    }
+    
+    if (DOM.changePasswordModal) {
+        // Cerrar modal al hacer click fuera
+        DOM.changePasswordModal.addEventListener('click', (e) => {
+            if (e.target === DOM.changePasswordModal) {
+                closeChangePasswordModal();
+            }
+        });
+    }
     
     // Toggle de visibilidad de contraseñas en el modal de cambio de contraseña
     document.querySelectorAll('.btn-toggle-password').forEach(btn => {
@@ -1309,12 +1486,35 @@ function displaySummary(result) {
     AppState.lastResult = result; // Guardar el resultado en el estado global (incluye transcripción para el chat)
     
     const speechmaticsSummary = result.speechmatics_summary || null;
+    const agentSummary = result.agent_summary || null;
     
-    // Resumen de Speechmatics
-    let speechmaticsSummaryHTML = '';
-    if (speechmaticsSummary && speechmaticsSummary.content) {
-        const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
-        speechmaticsSummaryHTML = `
+    // Resumen del Agente (prioritario si existe)
+    let summaryHTML = '';
+    if (agentSummary) {
+        // Convertir markdown a HTML
+        const content = markdownToHtml(agentSummary);
+        const agentInfo = result.agent_used || {};
+        summaryHTML = `
+            <div class="summary-section agent-summary-section">
+                <div class="summary-badge">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    Generated by ${agentInfo.name || 'AI Agent'} (${agentInfo.provider || 'AI'})
+                </div>
+                <div class="speechmatics-summary-content">
+                    ${content}
+                </div>
+            </div>
+        `;
+    }
+    // Resumen de Speechmatics (si no hay agente)
+    else if (speechmaticsSummary && speechmaticsSummary.content) {
+        // Convertir markdown a HTML también para consistencia
+        const content = markdownToHtml(speechmaticsSummary.content);
+        summaryHTML = `
             <div class="summary-section speechmatics-summary-section">
                 <div class="speechmatics-summary-content">
                     ${content}
@@ -1344,7 +1544,7 @@ function displaySummary(result) {
         <div class="tabs-content">
             <div class="tab-panel active" id="summaryTab">
                 <div class="summary-container">
-                    ${speechmaticsSummaryHTML}
+                    ${summaryHTML}
                 </div>
             </div>
             <div class="tab-panel" id="transcriptionTab">
@@ -1688,6 +1888,9 @@ function initApp() {
     
     // Inicializar event listeners
     initializeEventListeners();
+    
+    // Cargar agentes disponibles
+    loadUserAgents();
 }
 
 // Iniciar la aplicación cuando el DOM esté listo

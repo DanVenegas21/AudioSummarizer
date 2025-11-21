@@ -104,6 +104,22 @@
                             </select>
                         </div>
                         
+                        <!-- Selector de agentes -->
+                        <div class="agent-selector">
+                            <label for="agentSelect" class="agent-label">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                                <span>AI Agent:</span>
+                            </label>
+                            <select id="agentSelect" class="agent-select">
+                                <option value="" selected>Loading agents...</option>
+                            </select>
+                            <p class="agent-description" id="agentDescription">Select an agent to see details</p>
+                        </div>
+                        
                         <button class="btn btn-primary btn-large btn-full-width" id="processBtn">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                                 <path d="M10 3V17M10 17L15 12M10 17L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

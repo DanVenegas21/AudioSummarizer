@@ -94,10 +94,20 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=False):
         cursor = connection.cursor()
         cursor.execute(query, params)
         
+        # Determinar si la query modifica datos (INSERT, UPDATE, DELETE)
+        query_upper = query.strip().upper()
+        is_modification = any(query_upper.startswith(cmd) for cmd in ['INSERT', 'UPDATE', 'DELETE'])
+        
         if fetch_one:
             result = cursor.fetchone()
+            # Hacer commit si es una query de modificación (ej: INSERT ... RETURNING)
+            if is_modification:
+                connection.commit()
         elif fetch_all:
             result = cursor.fetchall()
+            # Hacer commit si es una query de modificación
+            if is_modification:
+                connection.commit()
         else:
             connection.commit()
             result = cursor.rowcount
