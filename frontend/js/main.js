@@ -1334,6 +1334,56 @@ function initializeEventListeners() {
     if (DOM.sidebarOverlay) {
         DOM.sidebarOverlay.addEventListener('click', toggleSidebar);
     }
+    
+    // Chat input Enter key
+    if (DOM.chatInput) {
+        DOM.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChatMessage();
+            }
+        });
+    }
+    
+    // User Menu
+    if (DOM.btnUserMenu) {
+        DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
+    }
+    if (DOM.btnLogout) {
+        DOM.btnLogout.addEventListener('click', logout);
+    }
+    if (DOM.btnChangePassword) {
+        DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    }
+    
+    // Change Password Modal
+    if (DOM.closeChangePasswordModalBtn) {
+        DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    if (DOM.cancelChangePasswordBtn) {
+        DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    if (DOM.submitChangePasswordBtn) {
+        DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    }
+    
+    // Cerrar modal al hacer click fuera
+    if (DOM.changePasswordModal) {
+        DOM.changePasswordModal.addEventListener('click', (e) => {
+            if (e.target === DOM.changePasswordModal) {
+                closeChangePasswordModal();
+            }
+        });
+    }
+    
+    // Cerrar el menú de usuario al hacer click fuera
+    document.addEventListener('click', (e) => {
+        if (DOM.userDropdown && !DOM.userDropdown.classList.contains('hidden')) {
+            if (!e.target.closest('.user-menu-section')) {
+                closeUserMenu();
+            }
+        }
+    });
 }
 
 /* Formatea la transcripción con identificación visual de hablantes */

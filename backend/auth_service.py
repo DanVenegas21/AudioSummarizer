@@ -221,4 +221,3 @@ def change_password(email, current_password, new_password):
     except Exception as e:
         logger.error(f"Error al cambiar contraseña: {e}")
         return False
-

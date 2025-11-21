@@ -590,27 +590,6 @@ def edit_summary():
         logger.error(f"Error al editar resumen: {str(e)}", exc_info=True)
         return jsonify({'error': f'Error editing summary: {str(e)}'}), 500
 
-# SERVIR ARCHIVOS DE UPLOADS
-@app.route('/uploads/<path:filename>')
-def serve_upload(filename):
-    """Sirve archivos de la carpeta uploads"""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
-@app.route('/<path:path>')
-def serve_frontend(path):
-    """Sirve archivos estáticos del frontend"""
-    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
-    return send_from_directory(frontend_path, path)
-
-
-@app.route('/frontend')
-@app.route('/frontend/')
-def serve_index():
-    """Sirve el index.html del frontend"""
-    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
-    return send_from_directory(frontend_path, 'index.html')
-
 # ENDPOINTS DE AGENTES PERSONALIZADOS
 @app.route('/api/agents', methods=['POST'])
 def create_custom_agent():
@@ -998,6 +977,27 @@ def process_audio_with_agent():
     except Exception as e:
         logger.error(f"Error al procesar audio con agente: {str(e)}", exc_info=True)
         return jsonify({'error': f'Error processing audio with agent: {str(e)}'}), 500
+
+# SERVIR ARCHIVOS DE UPLOADS
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """Sirve archivos de la carpeta uploads"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
+@app.route('/<path:path>')
+def serve_frontend(path):
+    """Sirve archivos estáticos del frontend"""
+    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
+    return send_from_directory(frontend_path, path)
+
+
+@app.route('/frontend')
+@app.route('/frontend/')
+def serve_index():
+    """Sirve el index.html del frontend"""
+    frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
+    return send_from_directory(frontend_path, 'index.html')
 
 
 # MANEJO DE ERRORES

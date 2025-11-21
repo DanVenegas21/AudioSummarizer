@@ -78,7 +78,7 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=False):
         params (tuple): Parámetros para la consulta
         fetch_one (bool): Si True, retorna un solo resultado
         fetch_all (bool): Si True, retorna todos los resultados
-        
+    
     Returns:
         result: Resultado de la consulta o None si falla
     """
@@ -115,8 +115,3 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=False):
             cursor.close()
         if connection:
             connection.close()
-
-
-
-
-

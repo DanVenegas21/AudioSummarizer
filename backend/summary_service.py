@@ -221,6 +221,7 @@ Answer:"""
         logger.error(f"Error en chat con Gemini: {str(e)}")
         return f"Lo siento, ocurrió un error al procesar tu pregunta: {str(e)}"
 
+
 def generar_resumen_con_agente(transcription, agent_config, gemini_api_key=None, openai_api_key=None):
     """
     Genera un resumen usando un agente personalizado
