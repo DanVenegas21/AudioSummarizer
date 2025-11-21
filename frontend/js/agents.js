@@ -61,9 +61,18 @@ async function loadAgents() {
     try {
         const user = JSON.parse(localStorage.getItem('user'));
         
-        // Mostrar loading
+        if (!user || !user.id) {
+            throw new Error('User not found in session');
+        }
+        
+        // Mostrar loading y limpiar tabla actual
         if (AgentsDOM.loadingPlaceholder) {
             AgentsDOM.loadingPlaceholder.style.display = 'block';
+        }
+        
+        if (AgentsDOM.agentsTableContainer) {
+            AgentsDOM.agentsTableContainer.innerHTML = '';
+            AgentsDOM.agentsTableContainer.style.display = 'none';
         }
         
         const response = await fetch(`http://localhost:5000/api/agents?user_id=${user.id}&only_active=false`);
@@ -74,9 +83,14 @@ async function loadAgents() {
         
         const data = await response.json();
         
+        console.log('Agents loaded:', data);
+        
         if (data.success) {
             AgentsState.agents = data.agents || [];
+            console.log('Total agents:', AgentsState.agents.length);
             displayAgentsTable(AgentsState.agents);
+        } else {
+            throw new Error(data.error || 'Failed to load agents');
         }
         
     } catch (error) {
@@ -84,21 +98,34 @@ async function loadAgents() {
         showError('Failed to load agents: ' + error.message);
         displayEmptyState();
     } finally {
-        // Ocultar loading
+        // Ocultar loading y mostrar tabla
         if (AgentsDOM.loadingPlaceholder) {
             AgentsDOM.loadingPlaceholder.style.display = 'none';
+        }
+        
+        if (AgentsDOM.agentsTableContainer) {
+            AgentsDOM.agentsTableContainer.style.display = 'block';
         }
     }
 }
 
 // Mostrar tabla de agentes
 function displayAgentsTable(agents) {
-    if (!AgentsDOM.agentsTableContainer) return;
+    console.log('Displaying agents table, count:', agents.length);
     
-    if (agents.length === 0) {
+    if (!AgentsDOM.agentsTableContainer) {
+        console.error('agentsTableContainer not found');
+        return;
+    }
+    
+    if (!agents || agents.length === 0) {
+        console.log('No agents to display, showing empty state');
         displayEmptyState();
         return;
     }
+    
+    // Asegurar que el container esté visible
+    AgentsDOM.agentsTableContainer.style.display = 'block';
     
     const tableHTML = `
         <table class="agents-table">
@@ -164,6 +191,10 @@ function displayAgentsTable(agents) {
 
 // Mostrar estado vacío
 function displayEmptyState() {
+    console.log('Displaying empty state');
+    
+    if (!AgentsDOM.agentsTableContainer) return;
+    
     AgentsDOM.agentsTableContainer.innerHTML = `
         <div class="empty-state">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -182,6 +213,9 @@ function displayEmptyState() {
             </button>
         </div>
     `;
+    
+    // Asegurar que el container esté visible
+    AgentsDOM.agentsTableContainer.style.display = 'block';
 }
 
 // Abrir modal para crear nuevo agente
@@ -276,10 +310,19 @@ async function saveAgent() {
         
         const data = await response.json();
         
+        console.log('Save agent response:', data);
+        
         if (data.success) {
             closeAgentModal();
-            loadAgents(); // Recargar lista
+            
+            // Recargar lista con un pequeño delay para asegurar que la DB se actualizó
+            setTimeout(() => {
+                loadAgents();
+            }, 100);
+            
             showSuccessMessage(AgentsState.isEditing ? 'Agent updated successfully' : 'Agent created successfully');
+        } else {
+            throw new Error(data.error || 'Failed to save agent');
         }
         
     } catch (error) {

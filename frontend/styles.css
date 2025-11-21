@@ -1055,6 +1055,12 @@ body {
     font-size: 0.95rem;
 }
 
+/* Loading Placeholder for Agents Page */
+.loading-placeholder {
+    padding: 3rem;
+    text-align: center;
+}
+
 /* Agents Table */
 .agents-table-container {
     overflow-x: auto;

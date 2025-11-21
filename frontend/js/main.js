@@ -1261,19 +1261,26 @@ function initializeEventListeners() {
         DOM.sidebarOverlay.addEventListener('click', closeSidebar);
     }
     
-    DOM.recordBtn.addEventListener('click', handleRecordButtonClick); // Click en el botón de grabar
+    // Botón de grabación (solo existe en index.html)
+    if (DOM.recordBtn) {
+        DOM.recordBtn.addEventListener('click', handleRecordButtonClick);
+    }
     
-    // Modal de selección de tipo de grabación
-    DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
+    // Modal de selección de tipo de grabación (solo existe en index.html)
+    if (DOM.closeRecordTypeModalBtn) {
+        DOM.closeRecordTypeModalBtn.addEventListener('click', closeRecordTypeModal);
+    }
     
-    // Cerrar modal al hacer click fuera
-    DOM.recordTypeModal.addEventListener('click', (e) => {
-        if (e.target === DOM.recordTypeModal) {
-            closeRecordTypeModal();
-        }
-    });
+    if (DOM.recordTypeModal) {
+        // Cerrar modal al hacer click fuera
+        DOM.recordTypeModal.addEventListener('click', (e) => {
+            if (e.target === DOM.recordTypeModal) {
+                closeRecordTypeModal();
+            }
+        });
+    }
     
-    // Manejar selección de tipo de grabación
+    // Manejar selección de tipo de grabación (solo existe en index.html)
     document.querySelectorAll('.record-type-option').forEach(button => {
         button.addEventListener('click', () => {
             const type = button.getAttribute('data-type');
@@ -1282,85 +1289,126 @@ function initializeEventListeners() {
         });
     });
     
-    // Click en el botón de seleccionar archivo
-    DOM.selectFileBtn.addEventListener('click', () => {
-        DOM.fileInput.click();
-    });
+    // Click en el botón de seleccionar archivo (solo existe en index.html)
+    if (DOM.selectFileBtn) {
+        DOM.selectFileBtn.addEventListener('click', () => {
+            DOM.fileInput.click();
+        });
+    }
     
-    // Cambio en el input de archivo
-    DOM.fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            handleAudioFile(file);
-        }
-    });
+    // Cambio en el input de archivo (solo existe en index.html)
+    if (DOM.fileInput) {
+        DOM.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleAudioFile(file);
+            }
+        });
+    }
     
-    // Cambio en el selector de agentes
+    // Cambio en el selector de agentes (solo existe en index.html)
     if (DOM.agentSelect) {
         DOM.agentSelect.addEventListener('change', updateAgentDescription);
     }
     
-    // Drag and Drop en el upload box
-    DOM.uploadBox.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        DOM.uploadBox.classList.add('drag-over');
-    });
-    
-    DOM.uploadBox.addEventListener('dragleave', () => {
-        DOM.uploadBox.classList.remove('drag-over');
-    });
-    
-    DOM.uploadBox.addEventListener('drop', (e) => {
-        e.preventDefault();
-        DOM.uploadBox.classList.remove('drag-over');
-        
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleAudioFile(file);
-        }
-    });
-    
-    DOM.processBtn.addEventListener('click', processAudio); // Botón de procesar
-    
-    // Botón de eliminar audio
-    DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
-    
-    // Modales de error
-    DOM.closeModalBtn.addEventListener('click', closeErrorModal);
-    DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
-    
-    // Click fuera del modal para cerrar
-    DOM.errorModal.addEventListener('click', (e) => {
-        if (e.target === DOM.errorModal) {
-            closeErrorModal();
-        }
-    });
-    
-    DOM.sendChatBtn.addEventListener('click', handleChatMessage); // Chat Footer Estático
-    
-    DOM.chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+    // Drag and Drop en el upload box (solo existe en index.html)
+    if (DOM.uploadBox) {
+        DOM.uploadBox.addEventListener('dragover', (e) => {
             e.preventDefault();
-            handleChatMessage();
-        }
-    });
+            DOM.uploadBox.classList.add('drag-over');
+        });
+        
+        DOM.uploadBox.addEventListener('dragleave', () => {
+            DOM.uploadBox.classList.remove('drag-over');
+        });
+        
+        DOM.uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            DOM.uploadBox.classList.remove('drag-over');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleAudioFile(file);
+            }
+        });
+    }
     
-    // User Menu
-    DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
-    DOM.btnLogout.addEventListener('click', logout);
-    DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    // Botón de procesar (solo existe en index.html)
+    if (DOM.processBtn) {
+        DOM.processBtn.addEventListener('click', processAudio);
+    }
     
-    // Change Password Modal
-    DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
-    DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
-    DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    // Botón de eliminar audio (solo existe en index.html)
+    if (DOM.removeAudioBtn) {
+        DOM.removeAudioBtn.addEventListener('click', clearCurrentAudio);
+    }
     
-    // Cerrar modal al hacer click fuera
-    DOM.changePasswordModal.addEventListener('click', (e) => {
-        if (e.target === DOM.changePasswordModal) {
-            closeChangePasswordModal();
-        }
-    });
+    // Modales de error (común a todas las páginas)
+    if (DOM.closeModalBtn) {
+        DOM.closeModalBtn.addEventListener('click', closeErrorModal);
+    }
+    
+    if (DOM.closeErrorBtn) {
+        DOM.closeErrorBtn.addEventListener('click', closeErrorModal);
+    }
+    
+    if (DOM.errorModal) {
+        // Click fuera del modal para cerrar
+        DOM.errorModal.addEventListener('click', (e) => {
+            if (e.target === DOM.errorModal) {
+                closeErrorModal();
+            }
+        });
+    }
+    
+    // Chat (solo existe en index.html)
+    if (DOM.sendChatBtn) {
+        DOM.sendChatBtn.addEventListener('click', handleChatMessage);
+    }
+    
+    if (DOM.chatInput) {
+        DOM.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChatMessage();
+            }
+        });
+    }
+    
+    // User Menu (común a todas las páginas - pero puede no existir en todas)
+    if (DOM.btnUserMenu) {
+        DOM.btnUserMenu.addEventListener('click', toggleUserMenu);
+    }
+    
+    if (DOM.btnLogout) {
+        DOM.btnLogout.addEventListener('click', logout);
+    }
+    
+    if (DOM.btnChangePassword) {
+        DOM.btnChangePassword.addEventListener('click', openChangePasswordModal);
+    }
+    
+    // Change Password Modal (común a todas las páginas - pero puede no existir en todas)
+    if (DOM.closeChangePasswordModalBtn) {
+        DOM.closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (DOM.cancelChangePasswordBtn) {
+        DOM.cancelChangePasswordBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (DOM.submitChangePasswordBtn) {
+        DOM.submitChangePasswordBtn.addEventListener('click', handleChangePassword);
+    }
+    
+    if (DOM.changePasswordModal) {
+        // Cerrar modal al hacer click fuera
+        DOM.changePasswordModal.addEventListener('click', (e) => {
+            if (e.target === DOM.changePasswordModal) {
+                closeChangePasswordModal();
+            }
+        });
+    }
     
     // Toggle de visibilidad de contraseñas en el modal de cambio de contraseña
     document.querySelectorAll('.btn-toggle-password').forEach(btn => {
@@ -1443,7 +1491,8 @@ function displaySummary(result) {
     // Resumen del Agente (prioritario si existe)
     let summaryHTML = '';
     if (agentSummary) {
-        const content = agentSummary.replace(/\n/g, '<br>');
+        // Convertir markdown a HTML
+        const content = markdownToHtml(agentSummary);
         const agentInfo = result.agent_used || {};
         summaryHTML = `
             <div class="summary-section agent-summary-section">
@@ -1463,7 +1512,8 @@ function displaySummary(result) {
     }
     // Resumen de Speechmatics (si no hay agente)
     else if (speechmaticsSummary && speechmaticsSummary.content) {
-        const content = speechmaticsSummary.content.replace(/\n/g, '<br>');
+        // Convertir markdown a HTML también para consistencia
+        const content = markdownToHtml(speechmaticsSummary.content);
         summaryHTML = `
             <div class="summary-section speechmatics-summary-section">
                 <div class="speechmatics-summary-content">
